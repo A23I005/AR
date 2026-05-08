@@ -2,30 +2,80 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>AR.js マーカーAR サンプル</title>
-    <!-- A-Frame読み込み -->
+    <title>AR.js スワイプ回転 サンプル</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <!-- AR.js読み込み -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <script>
+      AFRAME.registerComponent('swipe-rotate', {
+        schema: {
+          speed: { default: 0.5 } // 回転の感度（数字を大きくすると速く回ります）
+        },
+        init: function () {
+          this.touchStartX = 0;
+          this.touchStartY = 0;
+          this.isDragging = false;
+
+          // 画面に指が触れたとき
+          window.addEventListener('touchstart', (e) => {
+            this.isDragging = true;
+            this.touchStartX = e.touches[0].clientX;
+            this.touchStartY = e.touches[0].clientY;
+          });
+
+          // 画面から指が離れたとき
+          window.addEventListener('touchend', () => {
+            this.isDragging = false;
+          });
+
+          // 指を動かしているとき（スワイプ/スクロール）
+          window.addEventListener('touchmove', (e) => {
+            if (!this.isDragging) return;
+
+            // 現在の指の位置
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+
+            // 移動量を計算
+            const deltaX = currentX - this.touchStartX;
+            const deltaY = currentY - this.touchStartY;
+
+            // オブジェクトの現在の回転角度を取得
+            const rotation = this.el.getAttribute('rotation');
+
+            // X軸（上下）とY軸（左右）の回転を更新
+            this.el.setAttribute('rotation', {
+              x: rotation.x - deltaY * this.data.speed,
+              y: rotation.y + deltaX * this.data.speed,
+              z: rotation.z
+            });
+
+            // 次の計算のために現在位置を保存
+            this.touchStartX = currentX;
+            this.touchStartY = currentY;
+          });
+        }
+      });
+    </script>
   </head>
   <body style="margin: 0; overflow: hidden;">
     <a-scene embedded arjs>
-    <a-assets>
+      <a-assets>
         <a-asset-item id="fire-obj" src="たんQ.obj"></a-asset-item>
-        
         </a-assets>
 
-    <a-marker preset="hiro">
+      <a-marker preset="hiro">
         <a-entity 
+            id="model"
             obj-model="obj: #fire-obj;" 
             scale="1 1 1" 
             position="0 0 0" 
-            rotation="-90 0 0">
+            rotation="-90 0 0"
+            swipe-rotate>
         </a-entity>
-
-        </a-marker>
-    
-    <a-entity camera></a-entity>
-</a-scene>
+      </a-marker>
+      
+      <a-entity camera></a-entity>
+    </a-scene>
   </body>
 </html>
