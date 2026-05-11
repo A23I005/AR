@@ -7,45 +7,77 @@
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
     <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-  // --- あなたのFirebase設定コードをここに貼り付け ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
-    authDomain: "ar-stamp-6d9ed.firebaseapp.com",
-    projectId: "ar-stamp-6d9ed",
-    storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
-    messagingSenderId: "238550666098",
-    appId: "1:238550666098:web:8c161928290c093bf8abeb",
-    measurementId: "G-44D1V7P76C"
-  };
-  // -------------------------------------------
+      // --- あなたのFirebase設定コードをここに貼り付け ---
+      const firebaseConfig = {
+        apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
+        authDomain: "ar-stamp-6d9ed.firebaseapp.com",
+        projectId: "ar-stamp-6d9ed",
+        storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
+        messagingSenderId: "238550666098",
+        appId: "1:238550666098:web:8c161928290c093bf8abeb",
+        measurementId: "G-44D1V7P76C"
+      };
+      // -------------------------------------------
 
-  // Firebaseの初期化
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
+      // Firebaseの初期化
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
 
-  // 匿名ログインの実行
-  signInAnonymously(auth).catch((error) => {
-    console.error("ログインエラー:", error);
-  });
+      // 匿名ログインの実行
+      signInAnonymously(auth).catch((error) => {
+        console.error("ログインエラー:", error);
+      });
 
-  // ログイン状態の確認（ユーザーIDを取得するため）
-  let uid = "";
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      uid = user.uid;
-      console.log("ログイン完了！ ユーザーID:", uid);
-    }
-  });
+      // ログイン状態の確認（ユーザーIDを取得するため）
+      let uid = "";
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          uid = user.uid;
+          console.log("ログイン完了！ ユーザーID:", uid);
+        }
+      });
 
-  // 後で使うためにグローバル変数として公開（簡易的な実装のため）
-  window.db = db;
-  window.getUid = () => uid;
-</script>
+      // 後で使うためにグローバル変数として公開（簡易的な実装のため）
+      window.db = db;
+      window.getUid = () => uid;
+      // ボタンとデータベースの連携
+      const btn = document.getElementById('collect-btn');
+      const marker = document.querySelector('a-marker');
+
+      // マーカーを見つけた時
+      marker.addEventListener('markerFound', () => {
+        btn.style.display = 'block'; // ボタンを表示
+      });
+
+      // マーカーを見失った時
+      marker.addEventListener('markerLost', () => {
+        btn.style.display = 'none'; // ボタンを隠す
+      });
+
+      // ボタンを押した時の保存処理
+      btn.onclick = async () => {
+        const uid = window.getUid();
+        if (!uid) return alert("ログイン中です。少々お待ちください。");
+
+        try {
+          // 「users/ユーザーID/collections/hiro」という場所にデータを保存
+          await setDoc(doc(db, "users", uid, "collections", "hiro"), {
+            name: "たんQ",
+            timestamp: new Date()
+          });
+          alert("コレクションに追加しました！");
+          btn.style.display = 'none';
+        } catch (e) {
+          console.error("保存失敗:", e);
+          alert("保存に失敗しました。");
+        }
+      };
+    </script>
 
     <script>
       // --- 1. スワイプで回転させるコンポーネント ---
@@ -111,8 +143,27 @@
         }
       });
     </script>
+
+    <style>
+      #collect-btn {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 30px;
+        background-color: #ff5722;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-size: 18px;
+        font-weight: bold;
+        display: none; /* 最初は隠しておく */
+        z-index: 1000;
+      }
+    </style>
   </head>
   <body style="margin: 0; overflow: hidden;">
+    <button id="collect-btn">今のをゲットする！</button>
     <a-scene embedded arjs>
       <a-assets>
         <a-asset-item id="fire-obj" src="たんQ.obj"></a-asset-item>
