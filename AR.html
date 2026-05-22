@@ -58,16 +58,6 @@
           btn.style.display = 'none';
         });
       });
-      
-      // マーカーを見つけた時
-      marker.addEventListener('markerFound', () => {
-        btn.style.display = 'block'; // ボタンを表示
-      });
-
-      // マーカーを見失った時
-      marker.addEventListener('markerLost', () => {
-        btn.style.display = 'none'; // ボタンを隠す
-      });
 
       // ボタンを押した時の保存処理
       btn.onclick = async () => {
