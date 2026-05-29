@@ -65,6 +65,22 @@
       cursor: pointer;
       z-index: 3000; /* A-Frameより手前に表示 */
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+
+      /* 詳細ボタンのスタイル */
+    .detail-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #2196F3; /* 青系の色 */
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .detail-btn:hover {
+      background: #1976D2;
+    }
     }
   </style>
 </head>
@@ -82,6 +98,7 @@
       <div id="model-container"></div>
       <h2 id="modal-title">名前</h2>
       <p id="modal-desc">説明文</p>
+      <a id="modal-link-btn" class="detail-btn" href="#" target="_blank" style="display: none;">詳細を見る</a>
     </div>
   </div>
 
@@ -150,13 +167,15 @@
     const charData = {
       "hiro": {
         name: "コリトサウルス",
-        desc: "あなたの心を射抜いちゃうぞっ！コリトサウルが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。\nhttps://www.ous.ac.jp/common/files//202210281320210885382.pdf",
+        desc: "あなたの心を射抜いちゃうぞっ！コリトサウルが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
+        url: "https://www.ous.ac.jp/common/files//202210281320210885382.pdf",
         model: "models/コリトサウルス/Corythosaurus.glb"
       },
       // 他のマーカー(例: "kanji")を増やす場合はここに追加
       "tanq": {
         name: "ラウジャア",
-        desc: "あなたに興味津々！たんQ君が、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。\nhttps://www.ous.ac.jp/common/files//202504071232270270933.pdf",
+        desc: "あなたに興味津々！たんQ君が、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
+        url: "https://www.ous.ac.jp/common/files//202504071232270270933.pdf",
         model: "models/ラウジャア/Ravjaa.glb"
       }
     };
@@ -190,6 +209,15 @@
     function showDetail(info) {
       document.getElementById('modal-title').innerText = info.name;
       document.getElementById('modal-desc').innerText = info.desc;
+
+      const linkBtn = document.getElementById('modal-link-btn');
+      if (info.url) {
+        linkBtn.href = info.url;
+        linkBtn.style.display = 'inline-block'; // URLがあれば表示
+      } else {
+        linkBtn.style.display = 'none'; // URLがなければ隠す
+      }
+
       const container = document.getElementById('model-container');
       container.innerHTML = '';
 
