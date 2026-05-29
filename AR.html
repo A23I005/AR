@@ -44,16 +44,22 @@
       // 後で使うためにグローバル変数として公開（簡易的な実装のため）
       window.db = db;
       window.getUid = () => uid;
+      window.activeMarkerId = null;
+
       // ボタンとデータベースの連携
       const btn = document.getElementById('collect-btn');
       const markers = document.querySelectorAll('a-marker');
 
       markers.forEach((marker) => {
         marker.addEventListener('markerFound', () => {
+          window.activeMarkerId = marker.id;
           btn.style.display = 'block';
         });
 
         marker.addEventListener('markerLost', () => {
+          if (window.activeMarkerId === marker.id) {
+            window.activeMarkerId = null;
+          }
           btn.style.display = 'none';
         });
       });
@@ -61,12 +67,15 @@
       // ボタンを押した時の保存処理
       btn.onclick = async () => {
         const uid = window.getUid();
+        const markerId = window.activeMarkerId;
+
         if (!uid) return alert("ログイン中です。少々お待ちください。");
+        if (!markerId) return alert("マーカーを認識してください。");
 
         try {
-          // 「users/ユーザーID/collections/hiro」という場所にデータを保存
-          await setDoc(doc(db, "users", uid, "collections", "hiro"), {
-            name: "たんQ",
+          // 認識中のマーカーIDごとに保存する
+          await setDoc(doc(db, "users", uid, "collections", markerId), {
+            markerId: markerId,
             timestamp: new Date()
           });
           alert("コレクションに追加しました！");
