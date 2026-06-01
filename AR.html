@@ -1,279 +1,254 @@
 <!DOCTYPE html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8">
-    <title>AR.js 自転 サンプル</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR体験 - 恐竜マーカー</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-      import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
-        authDomain: "ar-stamp-6d9ed.firebaseapp.com",
-        projectId: "ar-stamp-6d9ed",
-        storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
-        messagingSenderId: "238550666098",
-        appId: "1:238550666098:web:8c161928290c093bf8abeb",
-        measurementId: "G-44D1V7P76C"
-      };
+        // Firebaseの設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
+            authDomain: "ar-stamp-6d9ed.firebaseapp.com",
+            projectId: "ar-stamp-6d9ed",
+            storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
+            messagingSenderId: "238550666098",
+            appId: "1:238550666098:web:8c161928290c093bf8abeb",
+            measurementId: "G-44D1V7P76C"
+        };
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-      signInAnonymously(auth).catch((error) => {
-        console.error("ログインエラー:", error);
-      });
+        signInAnonymously(auth).catch((error) => console.error("ログインエラー:", error));
 
-      let uid = "";
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          uid = user.uid;
-          console.log("ログイン完了！ ユーザーID:", uid);
-        }
-      });
-
-      window.db = db;
-      window.getUid = () => uid;
-      window.activeMarkerId = null;
-
-      const btn = document.getElementById('collect-btn');
-      const markers = document.querySelectorAll('a-marker');
-
-      markers.forEach((marker) => {
-        marker.addEventListener('markerFound', () => {
-          window.activeMarkerId = marker.id;
-          btn.style.display = 'block';
+        let uid = "";
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                uid = user.uid;
+                console.log("Firebaseログイン完了:", uid);
+            }
         });
 
-        marker.addEventListener('markerLost', () => {
-          if (window.activeMarkerId === marker.id) {
-            window.activeMarkerId = null;
-          }
-          btn.style.display = 'none';
-        });
-      });
+        // ボタンのクリック処理
+        const btn = document.getElementById('collect-btn');
+        btn.onclick = async () => {
+            const markerId = window.activeMarkerId;
+            if (!uid) return alert("ログイン処理中です。少々お待ちください。");
+            if (!markerId) return alert("マーカーを認識してください。");
 
-      btn.onclick = async () => {
-        const uid = window.getUid();
-        const markerId = window.activeMarkerId;
-
-        if (!uid) return alert("ログイン中です。少々お待ちください。");
-        if (!markerId) return alert("マーカーを認識してください。");
-
-        try {
-          await setDoc(doc(db, "users", uid, "collections", markerId), {
-            markerId: markerId,
-            timestamp: new Date()
-          });
-          alert("コレクションに追加しました！");
-          btn.style.display = 'none';
-        } catch (e) {
-          console.error("保存失敗:", e);
-          alert("保存に失敗しました。");
-        }
-      };
+            try {
+                await setDoc(doc(db, "users", uid, "collections", markerId), {
+                    markerId: markerId,
+                    timestamp: new Date()
+                });
+                alert("コレクションに追加しました！");
+                btn.style.display = 'none';
+            } catch (e) {
+                console.error("保存失敗:", e);
+                alert("保存に失敗しました。");
+            }
+        };
     </script>
 
     <script>
-      AFRAME.registerComponent('swipe-rotate', {
-        schema: { speed: { default: 0.5 } },
-        init: function () {
-          this.touchStartX = 0;
-          this.touchStartY = 0;
-          this.isDragging = false;
-          window.addEventListener('touchstart', (e) => {
-            this.isDragging = true;
-            this.touchStartX = e.touches[0].clientX;
-            this.touchStartY = e.touches[0].clientY;
-          });
-          window.addEventListener('touchend', () => { this.isDragging = false; });
-          window.addEventListener('touchmove', (e) => {
-            if (!this.isDragging) return;
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const deltaX = currentX - this.touchStartX;
-            const deltaY = currentY - this.touchStartY;
-            const rotation = this.el.getAttribute('rotation');
-            
-            this.el.setAttribute('rotation', {
-              x: rotation.x - deltaY * this.data.speed,
-              y: rotation.y + deltaX * this.data.speed,
-              z: rotation.z
-            });
-            
-            this.touchStartX = currentX;
-            this.touchStartY = currentY;
-          });
-        }
-      });
+        // A-Frame コンポーネント登録
+        AFRAME.registerComponent('swipe-rotate', {
+            schema: { speed: { default: 0.5 } },
+            init: function () {
+                this.touchStartX = 0; this.touchStartY = 0; this.isDragging = false;
+                window.addEventListener('touchstart', (e) => {
+                    this.isDragging = true;
+                    this.touchStartX = e.touches[0].clientX;
+                    this.touchStartY = e.touches[0].clientY;
+                });
+                window.addEventListener('touchend', () => { this.isDragging = false; });
+                window.addEventListener('touchmove', (e) => {
+                    if (!this.isDragging) return;
+                    const currentX = e.touches[0].clientX;
+                    const currentY = e.touches[0].clientY;
+                    const deltaX = currentX - this.touchStartX;
+                    const deltaY = currentY - this.touchStartY;
+                    const rotation = this.el.getAttribute('rotation');
+                    this.el.setAttribute('rotation', {
+                        x: rotation.x - deltaY * this.data.speed,
+                        y: rotation.y + deltaX * this.data.speed,
+                        z: rotation.z
+                    });
+                    this.touchStartX = currentX; this.touchStartY = currentY;
+                });
+            }
+        });
 
-      AFRAME.registerComponent('auto-center', {
-        init: function () {
-          this.el.addEventListener('model-loaded', () => {
-            const mesh = this.el.getObject3D('mesh');
-            if (!mesh) return;
-            const clone = mesh.clone();
-            clone.position.set(0, 0, 0);
-            clone.rotation.set(0, 0, 0);
-            clone.scale.set(1, 1, 1);
-            clone.updateMatrixWorld(true);
-
-            const box = new THREE.Box3().setFromObject(clone);
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-
-            this.el.setAttribute('position', {
-              x: -center.x,
-              y: -center.y,
-              z: -center.z
-            });
-          });
-        }
-      });
+        AFRAME.registerComponent('auto-center', {
+            init: function () {
+                this.el.addEventListener('model-loaded', () => {
+                    const mesh = this.el.getObject3D('mesh');
+                    if (!mesh) return;
+                    const clone = mesh.clone();
+                    clone.position.set(0, 0, 0); clone.rotation.set(0, 0, 0); clone.scale.set(1, 1, 1);
+                    clone.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(clone);
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+                    this.el.setAttribute('position', { x: -center.x, y: -center.y, z: -center.z });
+                });
+            }
+        });
     </script>
 
     <style>
-      #collect-btn {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 15px 30px;
-        background-color: #ff5722;
-        color: white;
-        border: none;
-        border-radius: 25px;
-        font-size: 18px;
-        font-weight: bold;
-        display: none;
-        z-index: 1000;
-      }
+        /* --- ローディング・案内画面のスタイル --- */
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; font-family: sans-serif; transition: opacity 0.5s ease;
+        }
+        .container {
+            text-align: center; background: white; border-radius: 20px;
+            padding: 40px 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px; width: 90%;
+        }
+        h1 { color: #333; margin-bottom: 20px; font-size: 28px; }
+        .description { color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
+        .status-box { margin-bottom: 25px; padding: 15px; background: #f7f9fc; border-radius: 12px; }
+        .status-item { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; font-size: 15px; color: #4a5568; }
+        .spinner { width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top: 3px solid #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .ready-icon { color: #10b981; font-weight: bold; }
+        
+        #ar-button {
+            background: #4f46e5; color: white; border: none; padding: 16px 32px;
+            font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4); width: 100%; display: none;
+        }
+
+        /* --- AR画面表示時のスタイル --- */
+        #ar-container {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            visibility: hidden; z-index: 1;
+        }
+        #collect-btn {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            padding: 15px 30px; background-color: #ff5722; color: white; border: none;
+            border-radius: 25px; font-size: 18px; font-weight: bold; display: none; z-index: 1000;
+        }
+        #to-collection-btn {
+            position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.6);
+            color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; z-index: 1000; font-size: 14px;
+        }
     </style>
-  </head>
-  <body style="margin: 0; overflow: hidden;">
-    <button id="collect-btn">今のをゲットする！</button>
-    <a href="collection.html" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 10px; text-decoration: none; border-radius: 5px; z-index: 1000;">図鑑を見る</a>
-    
-    <a-scene embedded arjs renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
-      <a-assets timeout="1000">
-        </a-assets>
+</head>
+<body style="margin: 0; overflow: hidden;">
 
-      <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
-      <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
+    <div id="start-screen">
+        <div class="container">
+            <h1>恐竜ARラリー</h1>
+            <p class="description">カメラと巨大な3Dモデルをバックグラウンドで安全に準備しています。完了までこのままお待ちください。</p>
+            <div class="status-box">
+                <div class="status-item">
+                    <span>3D恐竜モデルの読込:</span>
+                    <span id="models-status"><span class="spinner"></span></span>
+                </div>
+            </div>
+            <button id="ar-button">✓ 準備完了！ARを開始する</button>
+        </div>
+    </div>
 
-      <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Protoceratops">
-        <a-entity swipe-rotate>
-          <a-entity rotation="0 0 0">
-            <a-entity id="model-Protoceratops" scale="1 1 1" auto-center></a-entity>
-          </a-entity>
-        </a-entity>
-      </a-marker>
+    <div id="ar-container">
+        <button id="collect-btn">今のをゲットする！</button>
+        <a id="to-collection-btn" href="collection.html">図鑑を見る</a>
+        
+        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
+            <a-assets>
+                <a-asset-item id="Protoceratops-asset" src="models/プロトケラトプス/Protoceratops.glb"></a-asset-item>
+                <a-asset-item id="Ravjaa-asset" src="models/ラウジャア/Ravjaa.glb"></a-asset-item>
+                <a-asset-item id="Zavacephale-asset" src="models/サヴァケファレ/Zavacephale.glb"></a-asset-item>
+            </a-assets>
 
-      <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="Ravjaa">
-        <a-entity swipe-rotate>
-          <a-entity rotation="0 0 0">
-            <a-entity id="model-Ravjaa" scale="1 1 1" auto-center></a-entity>
-          </a-entity>
-        </a-entity>
-      </a-marker>
+            <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
+            <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
-      <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="Zavacephale">
-        <a-entity swipe-rotate>
-          <a-entity rotation="0 0 0">
-            <a-entity id="model-Zavacephale" scale="0.07 0.07 0.07" auto-center></a-entity>
-          </a-entity>
-        </a-entity>
-      </a-marker>
+            <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Protoceratops">
+                <a-entity swipe-rotate><a-entity rotation="0 0 0">
+                    <a-entity gltf-model="#Protoceratops-asset" scale="1 1 1" auto-center></a-entity>
+                </a-entity></a-entity>
+            </a-marker>
 
-      <a-entity camera></a-entity>
-    </a-scene>
+            <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="Ravjaa">
+                <a-entity swipe-rotate><a-entity rotation="0 0 0">
+                    <a-entity gltf-model="#Ravjaa-asset" scale="1 1 1" auto-center></a-entity>
+                </a-entity></a-entity>
+            </a-marker>
+
+            <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="Zavacephale">
+                <a-entity swipe-rotate><a-entity rotation="0 0 0">
+                    <a-entity gltf-model="#Zavacephale-asset" scale="0.07 0.07 0.07" auto-center></a-center></a-entity>
+                </a-entity></a-entity>
+            </a-marker>
+
+            <a-entity camera></a-entity>
+        </a-scene>
+    </div>
 
     <script>
-      (function(){
-        // 非同期で1つずつモデルを順番に読み込むリスト
-        const modelList = [
-          { id: 'model-Protoceratops', src: 'models/プロトケラトプス/Protoceratops.glb' },
-          { id: 'model-Ravjaa', src: 'models/ラウジャア/Ravjaa.glb' },
-          { id: 'model-Zavacephale', src: 'models/サヴァケファレ/Zavacephale.glb' }
-        ];
+        window.activeMarkerId = null;
 
-        function setReady(){
-          try { localStorage.setItem('ar_camera_ready','1'); } catch(e) {}
-        }
-        function clearReady(){
-          try { localStorage.removeItem('ar_camera_ready'); } catch(e) {}
-        }
-        function setModelsReady(){
-          try { localStorage.setItem('ar_models_ready','1'); } catch(e) {}
-        }
-        function clearModelsReady(){
-          try { localStorage.removeItem('ar_models_ready'); } catch(e) {}
-        }
-
-        function watchCamera(){
-          var checkInterval = setInterval(function(){
-            var v = document.querySelector('video');
-            if(v){
-              if(!v.paused && v.readyState > 2){ setReady(); }
-              v.addEventListener('playing', setReady);
-              v.addEventListener('loadeddata', function(){ if(!v.paused) setReady(); });
-              clearInterval(checkInterval);
-            }
-          }, 300);
-        }
-
-        // カメラが起動した後に、重いモデルを1つずつ「非同期（バックグラウンド）」でロードする関数
-        async function loadModelsSequentially() {
-          const assets = document.querySelector('a-assets');
-          if (!assets) return;
-
-          for (let i = 0; i < modelList.length; i++) {
-            const m = modelList[i];
-            await new Promise((resolve) => {
-              const item = document.createElement('a-asset-item');
-              item.setAttribute('id', m.id + '-asset');
-              item.setAttribute('src', m.src);
-              
-              // 読み込み完了、またはエラーが起きても次のモデルに進む
-              item.addEventListener('loaded', () => {
-                const entity = document.getElementById(m.id);
-                if (entity) {
-                  entity.setAttribute('gltf-model', '#' + m.id + '-asset');
-                }
-                resolve();
-              });
-              item.addEventListener('error', () => {
-                console.error("モデルの読み込みに失敗しました: " + m.src);
-                resolve();
-              });
-              
-              assets.appendChild(item);
+        // マーカー検知のイベント登録
+        const markers = document.querySelectorAll('a-marker');
+        const collectBtn = document.getElementById('collect-btn');
+        markers.forEach((marker) => {
+            marker.addEventListener('markerFound', () => {
+                window.activeMarkerId = marker.id;
+                collectBtn.style.display = 'block';
             });
-          }
-          // すべてのモデルの裏読み込み・配置が完了
-          setModelsReady();
+            marker.addEventListener('markerLost', () => {
+                if (window.activeMarkerId === marker.id) window.activeMarkerId = null;
+                collectBtn.style.display = 'none';
+            });
+        });
+
+        // 3Dモデルの全ロード完了を監視
+        const assets = document.querySelector('a-assets');
+        const items = assets.querySelectorAll('a-asset-item');
+        let loadedCount = 0;
+
+        function checkAllAssetsLoaded() {
+            loadedCount++;
+            if (loadedCount >= items.length) {
+                // すべてのモデルがメモリ上に完全展開されたらボタンを表示
+                document.getElementById('models-status').innerHTML = '<span class="ready-icon">✓ 完了</span>';
+                document.getElementById('ar-button').style.display = 'block';
+            }
         }
 
-        window.addEventListener('load', function(){
-          watchCamera();
-          // シーンが初期化されたら非同期ロードを開始する
-          const scene = document.querySelector('a-scene');
-          if (scene.hasLoaded) {
-            loadModelsSequentially();
-          } else {
-            scene.addEventListener('loaded', loadModelsSequentially);
-          }
+        items.forEach((item) => {
+            if (item.hasLoaded) {
+                checkAllAssetsLoaded();
+            } else {
+                item.addEventListener('loaded', checkAllAssetsLoaded);
+                item.addEventListener('error', checkAllAssetsLoaded); // エラー時もスタック防止で進める
+            }
         });
 
-        window.addEventListener('beforeunload', function(){
-          clearReady();
-          clearModelsReady();
+        // 「ARを開始する」が押されたら一瞬でカメラ画面に切り替える
+        document.getElementById('ar-button').addEventListener('click', () => {
+            // 案内画面を消す
+            const startScreen = document.getElementById('start-screen');
+            startScreen.style.opacity = '0';
+            setTimeout(() => startScreen.style.display = 'none', 500);
+
+            // 隠していたARシーンを「一瞬」で可視化する（ロードは終わっているので即カメラが映ります）
+            document.getElementById('ar-container').style.visibility = 'visible';
         });
-      })();
     </script>
-  </body>
+</body>
 </html>
