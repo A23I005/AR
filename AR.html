@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -49,6 +49,7 @@
   <script>
     AFRAME.registerComponent('swipe-rotate', {
       schema: { speed: { default: 0.5 } },
+
       init: function () {
         this.touchStartX = 0;
         this.touchStartY = 0;
@@ -177,17 +178,16 @@
 </head>
 
 <body>
+  <button id="collect-btn">今のをゲットする！</button>
+
   <a id="back-link" href="index.html">戻る</a>
   <a id="collection-link" href="collection.html">図鑑を見る</a>
-
-  <button id="collect-btn">今のをゲットする！</button>
 
   <div id="model-loading-indicator">モデルを表示中...</div>
 
   <a-scene
     embedded
-    vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; debugUIEnabled: false;"
+    arjs
     renderer="colorManagement: true; exposure: 1.2;"
   >
     <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
@@ -233,6 +233,7 @@
     function showModelLoading(markerId) {
       const indicator = document.getElementById("model-loading-indicator");
       const name = markerNames[markerId] || markerId;
+
       indicator.innerText = `${name} を表示中...`;
       indicator.style.display = "block";
     }
