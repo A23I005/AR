@@ -49,16 +49,22 @@
       const btn = document.getElementById('collect-btn');
       const markers = document.querySelectorAll('a-marker');
 
+      let currentMarkerId = "";
+
       markers.forEach((marker) => {
         marker.addEventListener('markerFound', () => {
+          currentMarkerId = marker.id;
           btn.style.display = 'block';
         });
 
         marker.addEventListener('markerLost', () => {
-          btn.style.display = 'none';
+          if (currentMarkerId === marker.id) {
+            currentMarkerId = "";
+            btn.style.display = 'none';
+          }
         });
-      });
-      
+      });      
+
       // ボタンを押した時の保存処理
       btn.onclick = async () => {
         const uid = window.getUid();
@@ -170,6 +176,8 @@
       <a-assets>
         <a-asset-item id="Corythosaurus-glb" src="models/コリトサウルス/base_basic_pbr.glb"></a-asset-item>
         <a-asset-item id="tanq-obj" src="models/tanQ/tanQ.obj"></a-asset-item>
+        <a-asset-item id="raujaa-glb" src="models/raujaa/raujaa.glb"></a-asset-item>
+        <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
       </a-assets>
 
       <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
@@ -198,7 +206,48 @@
             </a-entity>
           </a-entity>
         </a-entity>
-      </a-marker>      
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="raujaa">
+        <a-entity swipe-rotate>
+          <a-entity rotation="0 0 0">
+            <a-entity 
+              gltf-model="#raujaa-glb"
+              scale="0.4 0.4 0.4"
+              auto-center>
+            </a-entity>
+          </a-entity>
+        </a-entity>
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp.patt" id="toriko">
+        <a-entity swipe-rotate>
+          <a-entity rotation="0 0 0">
+            <a-entity 
+              gltf-model="#toriko-glb"
+              scale="0.4 0.4 0.4"
+              auto-center>
+            </a-entity>
+          </a-entity>
+        </a-entity>
+      </a-marker>
+
+      <!-- その他のマーカーはボックスを表示 -->
+      <a-marker type="pattern" url="markers/pattern-stanp3.patt" id="marker-stanp3">
+        <a-box position="0 0.5 0" scale="1 1 1" color="#FF5722"></a-box>
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="marker-stanp4">
+        <a-box position="0 0.5 0" scale="1 1 1" color="#2196F3"></a-box>
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp5.patt" id="marker-stanp5">
+        <a-box position="0 0.5 0" scale="1 1 1" color="#4CAF50"></a-box>
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp6.patt" id="marker-stanp6">
+        <a-box position="0 0.5 0" scale="1 1 1" color="#FFC107"></a-box>
+      </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
