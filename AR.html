@@ -165,7 +165,7 @@
         });
       }
 
-      // マーカーイベント設定関数
+      // マーカーイベント設定関数（動的モデル読み込み対応）
       function setupMarkerEvents() {
         const btn = document.getElementById('collect-btn');
         const markers = document.querySelectorAll('a-marker');
@@ -174,6 +174,16 @@
           marker.addEventListener('markerFound', () => {
             currentMarkerId = marker.id;
             btn.style.display = 'block';
+            
+            // 動的モデル読み込み
+            const lazyModel = marker.querySelector('.lazy-model');
+            if (lazyModel && !lazyModel.getAttribute('gltf-model')) {
+              const src = lazyModel.dataset.modelSrc;
+              if (src) {
+                console.log("モデル表示開始:", marker.id, src);
+                lazyModel.setAttribute('gltf-model', src);
+              }
+            }
           });
 
           marker.addEventListener('markerLost', () => {
@@ -190,7 +200,11 @@
         const template = document.getElementById('ar-scene-template');
         const container = document.getElementById('ar-container');
         const startupScreen = document.getElementById('startup-screen');
+        const statusText = document.getElementById('status-text');
         const startBtn = document.getElementById('start-ar-btn');
+
+        // ステータス更新
+        statusText.innerText = "カメラを起動中...";
 
         // templateからa-sceneを生成
         const sceneContent = template.content.cloneNode(true);
@@ -199,9 +213,11 @@
         // マーカーイベントセットアップ
         setupMarkerEvents();
 
-        // 起動画面を隠す
-        startupScreen.classList.add('hidden');
-        startBtn.disabled = true;
+        // 0.5秒後に起動画面を隠す
+        setTimeout(() => {
+          startupScreen.classList.add('hidden');
+          startBtn.disabled = true;
+        }, 500);
       }
 
       // ページ読み込み完了時にAR初期化とイベント登録
@@ -418,10 +434,8 @@
 
     <!-- ARシーンテンプレート -->
     <template id="ar-scene-template">
-      <a-scene embedded arjs renderer="colorManagement: true; exposure: 1.2;">
+      <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480;" renderer="colorManagement: true; exposure: 1.2;">
         <a-assets>
-          <a-asset-item id="raujaa-glb" src="models/raujaa/raujaa.glb"></a-asset-item>
-          <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
         </a-assets>
 
         <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
@@ -432,7 +446,8 @@
           <a-entity swipe-rotate>
             <a-entity rotation="0 0 0">
               <a-entity 
-                gltf-model="#raujaa-glb"
+                class="lazy-model"
+                data-model-src="models/raujaa/raujaa.glb"
                 scale="0.4 0.4 0.4"
                 auto-center>
               </a-entity>
@@ -444,7 +459,8 @@
           <a-entity swipe-rotate>
             <a-entity rotation="0 0 0">
               <a-entity 
-                gltf-model="#toriko-glb"
+                class="lazy-model"
+                data-model-src="models/torikosaurusu/base_basic_shaded.glb"
                 scale="0.4 0.4 0.4"
                 auto-center>
               </a-entity>
