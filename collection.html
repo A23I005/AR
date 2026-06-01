@@ -150,14 +150,21 @@
     const charData = {
       "hiro": {
         name: "コリトサウルス",
-        desc: "あなたの心を射抜いちゃうぞっ！コリトサウルが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
-        model: "models/コリトサウルス/base_basic_pbr.glb"
+        desc: "あなたの心を射抜いちゃうぞっ！コリトサウルスが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
+        type: "glb",
+        model: "models/コリトサウルス/base_basic_pbr.glb",
+        scale: "0.4 0.4 0.4",
+        position: "0 -0.6 0",
+        camera: "0 0 4"
       },
-      // 他のマーカー(例: "kanji")を増やす場合はここに追加
       "tanq": {
         name: "たんQ君",
         desc: "あなたに興味津々！たんQ君が、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
-        model: "models/たんQ/たんQ.glb"
+        type: "obj",
+        model: "models/tanQ/tanQ.obj",
+        scale: "0.4 0.4 0.4",
+        position: "0 -0.6 0",
+        camera: "0 0 4"
       }
     };
 
@@ -195,21 +202,29 @@
 
       if (info.model) {
         // scale="0.3" で小さくし、camera position="5" でカメラを引いて見切れを防止
+        const modelEntity =
+          info.type === "obj"
+            ? `<a-entity obj-model="obj: #model" scale="${info.scale}" auto-center></a-entity>`
+            : `<a-entity gltf-model="#model" scale="${info.scale}" auto-center></a-entity>`;
+
         const sceneHtml = `
           <a-scene embedded renderer="colorManagement: true; exposure: 1.2;" style="width: 100%; height: 100%;">
+            <a-assets>
+              <a-asset-item id="model" src="${info.model}"></a-asset-item>
+            </a-assets>
+
             <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
             <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
-            <a-assets><a-asset-item id="model" src="${info.model}"></a-asset-item></a-assets>
-            <a-entity swipe-rotate position="0 -3 0">
-              <a-entity gltf-model="#model" scale="3 3 3" auto-center></a-entity>
+
+            <a-entity swipe-rotate position="${info.position}">
+              ${modelEntity}
             </a-entity>
+
             <a-sky color="#fff"></a-sky>
-            <a-entity camera position="0 0 5"></a-entity>
-            <a-entity light="type: ambient; color: #BBB"></a-entity>
-            <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
+            <a-entity camera position="${info.camera}"></a-entity>
           </a-scene>
-        `;
-        container.innerHTML = sceneHtml;
+        `;        
+      container.innerHTML = sceneHtml;
       }
       document.getElementById('item-modal').style.display = 'block';
     }
