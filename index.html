@@ -252,25 +252,19 @@
 
         // ページロード時に監視開始
         // 修正後（これに書き換える！）
-		window.addEventListener('load', () => {
-			// 古いキャッシュ情報を一旦クリアして誤作動を防ぐ
-			try {
-				localStorage.removeItem('ar_camera_ready');
-				localStorage.removeItem('ar_models_ready');
-			} catch(e) {}
+		// loadイベントを待たずに、JavaScriptが読まれた瞬間に即実行する
+        (function() {
+          // 1. 遷移後、即座にカメラの起動と監視を開始（これで許可画面がすぐ出ます）
+          watchCamera();
 
-			// 100msごとに状態確認
-			checkInterval = setInterval(checkARReady, 100);
-
-			// 重いモデルを考慮し、最大待機時間を10秒から「20秒」に伸ばしておく（タイムアウト保険）
-			setupTimeout = setTimeout(() => {
-				if (!cameraReady || !modelsReady) {
-					console.warn('準備完了待機がタイムアウトしました。強制起動します。');
-					showButton(); 
-				}
-				clearInterval(checkInterval);
-			}, 20000);
-		});
+          // 2. A-Frameのシーンが準備できたら、裏で恐竜モデルを1つずつロードする
+          const scene = document.querySelector('a-scene');
+          if (scene && scene.hasLoaded) {
+            loadModelsSequentially();
+          } else if (scene) {
+            scene.addEventListener('loaded', loadModelsSequentially);
+          }
+        })();
 
         // クリーンアップ
         window.addEventListener('beforeunload', () => {
