@@ -189,7 +189,13 @@
     embedded
     arjs
     renderer="colorManagement: true; exposure: 1.2;"
+    gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;"
   >
+    <a-assets>
+      <a-asset-item id="raujaa-glb" src="models/raujaa/raujaa.glb"></a-asset-item>
+      <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
+    </a-assets>
+
     <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
     <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
@@ -197,8 +203,7 @@
       <a-entity swipe-rotate>
         <a-entity rotation="0 0 0">
           <a-entity
-            class="lazy-model"
-            data-model-src="models/raujaa/raujaa.glb"
+            gltf-model="#raujaa-glb"
             scale="0.4 0.4 0.4"
             auto-center>
           </a-entity>
@@ -210,8 +215,7 @@
       <a-entity swipe-rotate>
         <a-entity rotation="0 0 0">
           <a-entity
-            class="lazy-model"
-            data-model-src="models/torikosaurusu/base_basic_shaded.glb"
+            gltf-model="#toriko-glb"
             scale="0.4 0.4 0.4"
             auto-center>
           </a-entity>
@@ -230,19 +234,6 @@
       toriko: "トリケラ"
     };
 
-    function showModelLoading(markerId) {
-      const indicator = document.getElementById("model-loading-indicator");
-      const name = markerNames[markerId] || markerId;
-
-      indicator.innerText = `${name} を表示中...`;
-      indicator.style.display = "block";
-    }
-
-    function hideModelLoading() {
-      const indicator = document.getElementById("model-loading-indicator");
-      indicator.style.display = "none";
-    }
-
     function setupMarkerEvents() {
       const collectBtn = document.getElementById("collect-btn");
       const markers = document.querySelectorAll("a-marker");
@@ -251,38 +242,54 @@
         marker.addEventListener("markerFound", () => {
           currentMarkerId = marker.id;
           collectBtn.style.display = "block";
-
-          const lazyModel = marker.querySelector(".lazy-model");
-
-          if (lazyModel && !lazyModel.getAttribute("gltf-model")) {
-            const src = lazyModel.dataset.modelSrc;
-
-            if (src) {
-              console.log("モデル表示開始:", marker.id, src);
-              showModelLoading(marker.id);
-
-              lazyModel.addEventListener("model-loaded", () => {
-                console.log("モデル表示完了:", marker.id);
-                hideModelLoading();
-              }, { once: true });
-
-              lazyModel.addEventListener("model-error", () => {
-                console.error("モデル読み込み失敗:", marker.id);
-                const indicator = document.getElementById("model-loading-indicator");
-                indicator.innerText = "モデルの表示に失敗しました";
-                setTimeout(hideModelLoading, 2000);
-              }, { once: true });
-
-              lazyModel.setAttribute("gltf-model", src);
-            }
-          }
+          console.log("マーカー認識:", marker.id);
         });
 
         marker.addEventListener("markerLost", () => {
           if (currentMarkerId === marker.id) {
             currentMarkerId = "";
-            collectBtn.style.display = "none";
           }
+
+          collectBtn.style.display = "none";
+          console.log("マーカー解除:", marker.id);
+        });
+      });
+    }
+
+    function setupModelLoadingEvents() {
+      const indicator = document.getElementById("model-loading-indicator");
+
+      const models = [
+        {
+          id: "raujaa",
+          selector: '#raujaa [gltf-model]',
+          name: "ラウジャア"
+        },
+        {
+          id: "toriko",
+          selector: '#toriko [gltf-model]',
+          name: "トリケラ"
+        }
+      ];
+
+      models.forEach((item) => {
+        const modelEl = document.querySelector(item.selector);
+
+        if (!modelEl) return;
+
+        modelEl.addEventListener("model-loaded", () => {
+          console.log(`${item.name} モデル読み込み完了`);
+          indicator.style.display = "none";
+        });
+
+        modelEl.addEventListener("model-error", () => {
+          console.error(`${item.name} モデル読み込み失敗`);
+          indicator.innerText = `${item.name} の表示に失敗しました`;
+          indicator.style.display = "block";
+
+          setTimeout(() => {
+            indicator.style.display = "none";
+          }, 2000);
         });
       });
     }
@@ -313,7 +320,8 @@
             timestamp: new Date()
           });
 
-          alert("コレクションに追加しました！");
+          const name = markerNames[currentMarkerId] || currentMarkerId;
+          alert(`${name} をコレクションに追加しました！`);
           collectBtn.style.display = "none";
         } catch (e) {
           console.error("保存失敗:", e);
@@ -324,6 +332,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       setupMarkerEvents();
+      setupModelLoadingEvents();
       setupCollectButton();
     });
   </script>
