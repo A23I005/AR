@@ -59,35 +59,26 @@
         });
       });
       
-      // マーカーを見つけた時
-      marker.addEventListener('markerFound', () => {
-        btn.style.display = 'block'; // ボタンを表示
-      });
-
-      // マーカーを見失った時
-      marker.addEventListener('markerLost', () => {
-        btn.style.display = 'none'; // ボタンを隠す
-      });
-
       // ボタンを押した時の保存処理
       btn.onclick = async () => {
         const uid = window.getUid();
         if (!uid) return alert("ログイン中です。少々お待ちください。");
+        if (!currentMarkerId) return alert("マーカーを読み取ってください。");
 
         try {
-          // 「users/ユーザーID/collections/hiro」という場所にデータを保存
-          await setDoc(doc(db, "users", uid, "collections", "hiro"), {
-            name: "たんQ",
+          await setDoc(doc(db, "users", uid, "collections", currentMarkerId), {
+            markerId: currentMarkerId,
             timestamp: new Date()
           });
+
           alert("コレクションに追加しました！");
           btn.style.display = 'none';
         } catch (e) {
           console.error("保存失敗:", e);
           alert("保存に失敗しました。");
         }
-      };
-    </script>
+      };    
+      </script>
 
     <script>
       // --- 1. スワイプで回転させるコンポーネント ---
