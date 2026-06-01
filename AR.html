@@ -178,17 +178,18 @@
         <a-asset-item id="Corythosaurus-glb" src="models/コリトサウルス/Corythosaurus.glb"></a-asset-item>
         <a-asset-item id="Ravjaa-glb" src="models/ラウジャア/Ravjaa.glb"></a-asset-item>
         <a-asset-item id="Zavacephale-glb" src="models/サヴァケファレ/Zavacephale.glb"></a-asset-item>
+        <a-asset-item id="Protoceratops-glb" src="models/プロトケラトプス/Protoceratops.glb"></a-asset-item>
       </a-assets>
 
       <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
       <!-- マーカー情報を追加 -->
-      <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Corythosaurus">
+      <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Protoceratops">
         <a-entity swipe-rotate>
           <a-entity rotation="0 0 0">
             <a-entity 
-                gltf-model="#Corythosaurus-glb" 
+                gltf-model="#Protoceratops-glb" 
                 scale="1 1 1"
                 auto-center>
             </a-entity>
@@ -244,36 +245,36 @@
         window.addEventListener('beforeunload', clearReady);
       })();
     </script>
-+    <script>
-+      (function(){
-+        function setModelsReady(){ try{ localStorage.setItem('ar_models_ready','1'); }catch(e){} }
-+        function clearModelsReady(){ try{ localStorage.removeItem('ar_models_ready'); }catch(e){} }
-+
-+        var assets = document.querySelector('a-assets');
-+        if(assets){
-+          // a-assets の 'loaded' は全ての子アセットが読み込まれた時に発火する
-+          assets.addEventListener('loaded', function(){ setModelsReady(); });
-+
-+          // フォールバック：個々の a-asset-item の loaded イベントを拾い、数え切れたらフラグを立てる
-+          var items = assets.querySelectorAll('a-asset-item');
-+          if(items.length === 0){ setModelsReady(); }
-+          else {
-+            var remain = items.length;
-+            items.forEach(function(it){
-+              it.addEventListener('loaded', function(){
-+                remain--; if(remain <= 0) setModelsReady();
-+              });
-+            });
-+          }
-+        } else {
-+          // assets 要素がまだ無ければ DOMContentLoaded 後に再チェック
-+          document.addEventListener('DOMContentLoaded', function(){
-+            var a = document.querySelector('a-assets'); if(a) a.addEventListener('loaded', function(){ setModelsReady(); });
-+          });
-+        }
-+
-+        window.addEventListener('beforeunload', clearModelsReady);
-+      })();
-+    </script>
+    <script>
+      (function(){
+        function setModelsReady(){ try{ localStorage.setItem('ar_models_ready','1'); }catch(e){} }
+        function clearModelsReady(){ try{ localStorage.removeItem('ar_models_ready'); }catch(e){} }
+
+        var assets = document.querySelector('a-assets');
+        if(assets){
+          // a-assets の 'loaded' は全ての子アセットが読み込まれた時に発火する
+          assets.addEventListener('loaded', function(){ setModelsReady(); });
+
+         // フォールバック：個々の a-asset-item の loaded イベントを拾い、数え切れたらフラグを立てる
+          var items = assets.querySelectorAll('a-asset-item');
+          if(items.length === 0){ setModelsReady(); }
+          else {
+            var remain = items.length;
+            items.forEach(function(it){
+              it.addEventListener('loaded', function(){
+                remain--; if(remain <= 0) setModelsReady();
+              });
+            });
+          }
+        } else {
+          // assets 要素がまだ無ければ DOMContentLoaded 後に再チェック
+          document.addEventListener('DOMContentLoaded', function(){
+            var a = document.querySelector('a-assets'); if(a) a.addEventListener('loaded', function(){ setModelsReady(); });
+          });
+        }
+
+        window.addEventListener('beforeunload', clearModelsReady);
+      })();
+      </script>
   </body>
 </html>
