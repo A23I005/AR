@@ -117,6 +117,7 @@
       height: 100%;
       margin: 0;
       overflow: hidden;
+      background: black;
     }
 
     a-scene {
@@ -125,6 +126,12 @@
       left: 0;
       width: 100vw !important;
       height: 100vh !important;
+      background: transparent !important;
+    }
+
+    canvas,
+    .a-canvas {
+      background: transparent !important;
     }
 
     video {
@@ -133,10 +140,9 @@
       left: 0 !important;
       width: 100vw !important;
       height: 100vh !important;
-      object-fit: contain !important;
-      background: black !important;
+      object-fit: cover !important;
     }
-
+    
     #collect-btn {
       position: fixed;
       bottom: 20px;
@@ -205,8 +211,9 @@
 
     <a-scene
       embedded
+      vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; debugUIEnabled: false;"
-      renderer="colorManagement: true; exposure: 1.2;"
+      renderer="alpha: true; colorManagement: true; exposure: 1.2;"
     >
     <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
     <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
