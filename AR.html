@@ -121,6 +121,35 @@
 
       let currentMarkerId = "";
       let arSceneReady = false;
+      let modelLoadingInterval = null;
+
+      // 読み込み表示関数
+      function showModelLoading(name) {
+        const indicator = document.getElementById('model-loading-indicator');
+        const text = document.getElementById('model-loading-text');
+        if (indicator && text) {
+          text.innerText = `${name} を読み込み中...`;
+          indicator.style.display = 'flex';
+        }
+      }
+
+      function updateModelLoadingProgress(percent) {
+        const progress = document.getElementById('model-loading-progress');
+        if (progress) {
+          progress.style.width = percent + '%';
+        }
+      }
+
+      function hideModelLoading() {
+        const indicator = document.getElementById('model-loading-indicator');
+        if (indicator) {
+          indicator.style.display = 'none';
+        }
+        if (modelLoadingInterval) {
+          clearInterval(modelLoadingInterval);
+          modelLoadingInterval = null;
+        }
+      }
 
       // マーカーイベント設定関数（動的モデル読み込み対応）
       function setupMarkerEvents() {
@@ -138,6 +167,49 @@
               const src = lazyModel.dataset.modelSrc;
               if (src) {
                 console.log("モデル読み込み開始:", marker.id, src);
+                
+                // 読み込み表示を開始
+                showModelLoading(marker.id);
+                updateModelLoadingProgress(10);
+                
+                // 疑似進行度を進める
+                let currentProgress = 10;
+                if (modelLoadingInterval) clearInterval(modelLoadingInterval);
+                modelLoadingInterval = setInterval(() => {
+                  if (currentProgress < 90) {
+                    currentProgress += Math.random() * 40;
+                    if (currentProgress > 90) currentProgress = 90;
+                    updateModelLoadingProgress(currentProgress);
+                  }
+                }, 500);
+                
+                // モデル読み込み完了時のハンドラ
+                const onModelLoaded = () => {
+                  console.log("モデル読み込み完了:", marker.id);
+                  updateModelLoadingProgress(100);
+                  document.getElementById('model-loading-text').innerText = "表示完了！";
+                  setTimeout(() => {
+                    hideModelLoading();
+                  }, 500);
+                  lazyModel.removeEventListener('model-loaded', onModelLoaded);
+                  lazyModel.removeEventListener('model-error', onModelError);
+                };
+                
+                // モデル読み込みエラー時のハンドラ
+                const onModelError = () => {
+                  console.error("モデル読み込みエラー:", marker.id);
+                  document.getElementById('model-loading-text').innerText = "モデルの読み込みに失敗しました";
+                  setTimeout(() => {
+                    hideModelLoading();
+                  }, 2000);
+                  lazyModel.removeEventListener('model-loaded', onModelLoaded);
+                  lazyModel.removeEventListener('model-error', onModelError);
+                };
+                
+                lazyModel.addEventListener('model-loaded', onModelLoaded);
+                lazyModel.addEventListener('model-error', onModelError);
+                
+                // gltf-modelをセット
                 lazyModel.setAttribute('gltf-model', src);
               }
             }
@@ -342,6 +414,45 @@
         width: 100%;
         height: 100%;
       }
+
+      /* モデル読み込み表示 */
+      #model-loading-indicator {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        z-index: 2000;
+        min-width: 200px;
+      }
+
+      #model-loading-text {
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-align: center;
+        font-weight: bold;
+      }
+
+      #model-loading-bar {
+        width: 150px;
+        height: 6px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      #model-loading-progress {
+        height: 100%;
+        background-color: #ff5722;
+        width: 0%;
+        transition: width 0.2s ease;
+      }
     </style>
   </head>
   <body style="margin: 0; overflow: hidden;">
@@ -357,6 +468,14 @@
 
     <!-- ARコンテナ -->
     <div id="ar-container"></div>
+
+    <!-- モデル読み込み表示 -->
+    <div id="model-loading-indicator">
+      <div id="model-loading-text">モデル読み込み中...</div>
+      <div id="model-loading-bar">
+        <div id="model-loading-progress"></div>
+      </div>
+    </div>
 
     <!-- UIボタン -->
     <button id="collect-btn">今のをゲットする！</button>
