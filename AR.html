@@ -123,46 +123,48 @@
       let arSceneReady = false;
 
       // モデル事前読み込み関数
-      function preloadModels() {
+      async function preloadModels() {
         const statusText = document.getElementById('status-text');
         const startBtn = document.getElementById('start-ar-btn');
         const models = [
           'models/raujaa/raujaa.glb',
           'models/torikosaurusu/base_basic_shaded.glb'
         ];
-        
         let loadedCount = 0;
         let failedCount = 0;
 
-        models.forEach((modelUrl, index) => {
-          fetch(modelUrl)
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              loadedCount++;
-              console.log(`モデル読み込み成功: ${modelUrl} (${loadedCount}/${models.length})`);
-              statusText.innerText = `3Dモデルを読み込み中... ${loadedCount}/${models.length}`;
-              
-              if (loadedCount + failedCount === models.length) {
-                arSceneReady = true;
-                statusText.innerText = "準備完了";
-                startBtn.disabled = false;
-                if (failedCount > 0) {
-                  console.warn(`${failedCount}個のモデル読み込みに失敗しました`);
-                }
-              }
-            })
-            .catch(error => {
-              failedCount++;
-              console.error(`モデル読み込み失敗: ${modelUrl}`, error);
-              
-              if (loadedCount + failedCount === models.length) {
-                arSceneReady = true;
-                statusText.innerText = "準備完了";
-                startBtn.disabled = false;
-                console.warn("一部モデルの事前読み込みに失敗しました。カメラ起動後に読み込まれる場合があります。");
-              }
-            });
-        });
+        startBtn.disabled = true;
+
+        for (let index = 0; index < models.length; index++) {
+          const modelUrl = models[index];
+
+          try {
+            const response = await fetch(modelUrl, { cache: 'force-cache' });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            console.log('事前読み込み完了:', modelUrl, blob.size);
+
+            loadedCount++;
+            statusText.innerText = `3Dモデルを読み込み中... ${loadedCount}/${models.length}`;
+          } catch (error) {
+            failedCount++;
+            console.error(`モデル読み込み失敗: ${modelUrl}`, error);
+          }
+        }
+
+        arSceneReady = true;
+
+        if (failedCount > 0) {
+          statusText.innerText = '一部モデルの事前読み込みに失敗しました。通信環境を確認してください。';
+          startBtn.disabled = false;
+          return;
+        }
+
+        statusText.innerText = '準備完了';
+        startBtn.disabled = false;
       }
 
       // マーカーイベント設定関数（動的モデル読み込み対応）
