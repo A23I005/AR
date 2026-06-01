@@ -244,5 +244,36 @@
         window.addEventListener('beforeunload', clearReady);
       })();
     </script>
++    <script>
++      (function(){
++        function setModelsReady(){ try{ localStorage.setItem('ar_models_ready','1'); }catch(e){} }
++        function clearModelsReady(){ try{ localStorage.removeItem('ar_models_ready'); }catch(e){} }
++
++        var assets = document.querySelector('a-assets');
++        if(assets){
++          // a-assets の 'loaded' は全ての子アセットが読み込まれた時に発火する
++          assets.addEventListener('loaded', function(){ setModelsReady(); });
++
++          // フォールバック：個々の a-asset-item の loaded イベントを拾い、数え切れたらフラグを立てる
++          var items = assets.querySelectorAll('a-asset-item');
++          if(items.length === 0){ setModelsReady(); }
++          else {
++            var remain = items.length;
++            items.forEach(function(it){
++              it.addEventListener('loaded', function(){
++                remain--; if(remain <= 0) setModelsReady();
++              });
++            });
++          }
++        } else {
++          // assets 要素がまだ無ければ DOMContentLoaded 後に再チェック
++          document.addEventListener('DOMContentLoaded', function(){
++            var a = document.querySelector('a-assets'); if(a) a.addEventListener('loaded', function(){ setModelsReady(); });
++          });
++        }
++
++        window.addEventListener('beforeunload', clearModelsReady);
++      })();
++    </script>
   </body>
 </html>

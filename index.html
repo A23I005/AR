@@ -158,9 +158,9 @@
 
 		function drawGameOver(){ background(10,0,20); fill(255,80,80); textAlign(CENTER,CENTER); textSize(42); text('GAME OVER', width/2, height/2-40); textSize(20); fill(255); text('SCORE: '+score, width/2, height/2+10); }
 
-		// ARボタン制御：localStorage のキー 'ar_camera_ready' を監視
-		function checkArReady(){ try{ if(localStorage.getItem('ar_camera_ready') === '1'){ document.getElementById('ar-button').style.display='block'; } else { document.getElementById('ar-button').style.display='none'; } }catch(e){} }
-		window.addEventListener('storage', (e)=>{ if(e.key === 'ar_camera_ready') checkArReady(); });
+// ARボタン制御：localStorage のキー 'ar_camera_ready' と 'ar_models_ready' を監視
+    function checkArReady(){ try{ var cam = localStorage.getItem('ar_camera_ready') === '1'; var mdl = localStorage.getItem('ar_models_ready') === '1'; if(cam && mdl){ document.getElementById('ar-button').style.display='block'; } else { document.getElementById('ar-button').style.display='none'; } }catch(e){} }
+    window.addEventListener('storage', (e)=>{ if(e.key === 'ar_camera_ready' || e.key === 'ar_models_ready') checkArReady(); });
 		// フォールバック：ポーリングで信頼性向上（別タブで設定されても確実に取得）
 		const arPoll = setInterval(checkArReady, 800);
 		// visibilitychange と focus でも再チェック
