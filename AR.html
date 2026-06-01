@@ -151,7 +151,7 @@
         }
       }
 
-      // マーカーイベント設定関数（動的モデル読み込み対応）
+      // マーカーイベント設定関数
       function setupMarkerEvents() {
         const btn = document.getElementById('collect-btn');
         const markers = document.querySelectorAll('a-marker');
@@ -160,59 +160,6 @@
           marker.addEventListener('markerFound', () => {
             currentMarkerId = marker.id;
             btn.style.display = 'block';
-            
-            // 動的モデル読み込み
-            const lazyModel = marker.querySelector('.lazy-model');
-            if (lazyModel && !lazyModel.getAttribute('gltf-model')) {
-              const src = lazyModel.dataset.modelSrc;
-              if (src) {
-                console.log("モデル読み込み開始:", marker.id, src);
-                
-                // 読み込み表示を開始
-                showModelLoading(marker.id);
-                updateModelLoadingProgress(10);
-                
-                // 疑似進行度を進める
-                let currentProgress = 10;
-                if (modelLoadingInterval) clearInterval(modelLoadingInterval);
-                modelLoadingInterval = setInterval(() => {
-                  if (currentProgress < 90) {
-                    currentProgress += Math.random() * 40;
-                    if (currentProgress > 90) currentProgress = 90;
-                    updateModelLoadingProgress(currentProgress);
-                  }
-                }, 500);
-                
-                // モデル読み込み完了時のハンドラ
-                const onModelLoaded = () => {
-                  console.log("モデル読み込み完了:", marker.id);
-                  updateModelLoadingProgress(100);
-                  document.getElementById('model-loading-text').innerText = "表示完了！";
-                  setTimeout(() => {
-                    hideModelLoading();
-                  }, 500);
-                  lazyModel.removeEventListener('model-loaded', onModelLoaded);
-                  lazyModel.removeEventListener('model-error', onModelError);
-                };
-                
-                // モデル読み込みエラー時のハンドラ
-                const onModelError = () => {
-                  console.error("モデル読み込みエラー:", marker.id);
-                  document.getElementById('model-loading-text').innerText = "モデルの読み込みに失敗しました";
-                  setTimeout(() => {
-                    hideModelLoading();
-                  }, 2000);
-                  lazyModel.removeEventListener('model-loaded', onModelLoaded);
-                  lazyModel.removeEventListener('model-error', onModelError);
-                };
-                
-                lazyModel.addEventListener('model-loaded', onModelLoaded);
-                lazyModel.addEventListener('model-error', onModelError);
-                
-                // gltf-modelをセット
-                lazyModel.setAttribute('gltf-model', src);
-              }
-            }
           });
 
           marker.addEventListener('markerLost', () => {
@@ -460,8 +407,9 @@
     <div id="startup-screen">
       <div id="startup-content">
         <h1>AR恐竜図鑑</h1>
-        <p id="status-text">データを読み込み中...</p>
+        <p id="status-text">3Dモデルを読み込み中...</p>
         <p style="font-size: 12px; color: #999; margin-top: 20px;">初回は少し時間がかかります</p>
+        <p style="font-size: 12px; color: #999; margin-top: 10px;">Wi-Fi環境での利用をおすすめします</p>
         <button id="start-ar-btn" disabled>カメラを起動する</button>
       </div>
     </div>
@@ -485,6 +433,8 @@
     <template id="ar-scene-template">
       <a-scene embedded arjs renderer="colorManagement: true; exposure: 1.2;">
         <a-assets>
+          <a-asset-item id="raujaa-glb" src="models/raujaa/raujaa.glb"></a-asset-item>
+          <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
         </a-assets>
 
         <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
@@ -495,8 +445,7 @@
           <a-entity swipe-rotate>
             <a-entity rotation="0 0 0">
               <a-entity 
-                class="lazy-model"
-                data-model-src="models/raujaa/raujaa.glb"
+                gltf-model="#raujaa-glb"
                 scale="0.4 0.4 0.4"
                 auto-center>
               </a-entity>
@@ -508,8 +457,7 @@
           <a-entity swipe-rotate>
             <a-entity rotation="0 0 0">
               <a-entity 
-                class="lazy-model"
-                data-model-src="models/torikosaurusu/base_basic_shaded.glb"
+                gltf-model="#toriko-glb"
                 scale="0.4 0.4 0.4"
                 auto-center>
               </a-entity>
