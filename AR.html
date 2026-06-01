@@ -122,7 +122,7 @@
       let currentMarkerId = "";
       let arSceneReady = false;
 
-      // マーカーイベント設定関数
+      // マーカーイベント設定関数（動的モデル読み込み対応）
       function setupMarkerEvents() {
         const btn = document.getElementById('collect-btn');
         const markers = document.querySelectorAll('a-marker');
@@ -131,6 +131,16 @@
           marker.addEventListener('markerFound', () => {
             currentMarkerId = marker.id;
             btn.style.display = 'block';
+            
+            // 動的モデル読み込み
+            const lazyModel = marker.querySelector('.lazy-model');
+            if (lazyModel && !lazyModel.getAttribute('gltf-model')) {
+              const src = lazyModel.dataset.modelSrc;
+              if (src) {
+                console.log("モデル読み込み開始:", marker.id, src);
+                lazyModel.setAttribute('gltf-model', src);
+              }
+            }
           });
 
           marker.addEventListener('markerLost', () => {
@@ -356,45 +366,18 @@
     <template id="ar-scene-template">
       <a-scene embedded arjs renderer="colorManagement: true; exposure: 1.2;">
         <a-assets>
-          <a-asset-item id="Corythosaurus-glb" src="models/コリトサウルス/base_basic_pbr.glb"></a-asset-item>
-          <a-asset-item id="tanq-obj" src="models/tanQ/tanQ.obj"></a-asset-item>
-          <a-asset-item id="raujaa-glb" src="models/raujaa/raujaa.glb"></a-asset-item>
-          <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
         </a-assets>
 
         <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
         <!-- マーカー情報を追加 -->
-        <a-marker preset="hiro" id = "hiro">
-          <a-entity swipe-rotate>
-            <a-entity rotation="0 0 0">
-              <a-entity 
-                  gltf-model="#Corythosaurus-glb" 
-                  scale="1 1 1"
-                  auto-center>
-              </a-entity>
-            </a-entity>
-          </a-entity>
-        </a-marker>
-
-        <a-marker type="pattern" url="markers/pattern-stp1.patt" id="tanq">
-          <a-entity swipe-rotate>
-            <a-entity rotation="0 0 0">
-              <a-entity 
-                obj-model="obj: #tanq-obj"
-                scale="1 1 1"
-                auto-center>
-              </a-entity>
-            </a-entity>
-          </a-entity>
-        </a-marker>
-
         <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="raujaa">
           <a-entity swipe-rotate>
             <a-entity rotation="0 0 0">
               <a-entity 
-                gltf-model="#raujaa-glb"
+                class="lazy-model"
+                data-model-src="models/raujaa/raujaa.glb"
                 scale="0.4 0.4 0.4"
                 auto-center>
               </a-entity>
@@ -406,29 +389,13 @@
           <a-entity swipe-rotate>
             <a-entity rotation="0 0 0">
               <a-entity 
-                gltf-model="#toriko-glb"
+                class="lazy-model"
+                data-model-src="models/torikosaurusu/base_basic_shaded.glb"
                 scale="0.4 0.4 0.4"
                 auto-center>
               </a-entity>
             </a-entity>
           </a-entity>
-        </a-marker>
-
-        <!-- その他のマーカーはボックスを表示 -->
-        <a-marker type="pattern" url="markers/pattern-stanp3.patt" id="marker-stanp3">
-          <a-box position="0 0.5 0" scale="1 1 1" color="#FF5722"></a-box>
-        </a-marker>
-
-        <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="marker-stanp4">
-          <a-box position="0 0.5 0" scale="1 1 1" color="#2196F3"></a-box>
-        </a-marker>
-
-        <a-marker type="pattern" url="markers/pattern-stanp5.patt" id="marker-stanp5">
-          <a-box position="0 0.5 0" scale="1 1 1" color="#4CAF50"></a-box>
-        </a-marker>
-
-        <a-marker type="pattern" url="markers/pattern-stanp6.patt" id="marker-stanp6">
-          <a-box position="0 0.5 0" scale="1 1 1" color="#FFC107"></a-box>
         </a-marker>
 
         <a-entity camera></a-entity>
