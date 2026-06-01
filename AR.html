@@ -226,55 +226,67 @@
     <script>
       (function(){
         function setReady(){
-          try{ localStorage.setItem('ar_camera_ready','1'); }catch(e){}
+          try { localStorage.setItem('ar_camera_ready','1'); } catch(e) { console.warn('ar_camera_ready error', e); }
         }
         function clearReady(){
-          try{ localStorage.removeItem('ar_camera_ready'); }catch(e){}
+          try { localStorage.removeItem('ar_camera_ready'); } catch(e) { console.warn('ar_camera_ready clear error', e); }
+        }
+        function setModelsReady(){
+          try { localStorage.setItem('ar_models_ready','1'); } catch(e) { console.warn('ar_models_ready error', e); }
+        }
+        function clearModelsReady(){
+          try { localStorage.removeItem('ar_models_ready'); } catch(e) { console.warn('ar_models_ready clear error', e); }
         }
 
-        var checkInterval = setInterval(function(){
-          var v = document.querySelector('video');
-          if(v){
-            if(!v.paused && v.readyState > 2){ setReady(); }
-            v.addEventListener('playing', setReady);
-            v.addEventListener('loadeddata', function(){ if(!v.paused) setReady(); });
-            clearInterval(checkInterval);
-          }
-        }, 300);
+        function watchCamera(){
+          var checkInterval = setInterval(function(){
+            var v = document.querySelector('video');
+            if(v){
+              if(!v.paused && v.readyState > 2){ setReady(); }
+              v.addEventListener('playing', setReady);
+              v.addEventListener('loadeddata', function(){ if(!v.paused) setReady(); });
+              clearInterval(checkInterval);
+            }
+          }, 300);
+        }
 
-        window.addEventListener('beforeunload', clearReady);
-      })();
-    </script>
-    <script>
-      (function(){
-        function setModelsReady(){ try{ localStorage.setItem('ar_models_ready','1'); }catch(e){} }
-        function clearModelsReady(){ try{ localStorage.removeItem('ar_models_ready'); }catch(e){} }
-
-        var assets = document.querySelector('a-assets');
-        if(assets){
-          // a-assets の 'loaded' は全ての子アセットが読み込まれた時に発火する
-          assets.addEventListener('loaded', function(){ setModelsReady(); });
-
-         // フォールバック：個々の a-asset-item の loaded イベントを拾い、数え切れたらフラグを立てる
-          var items = assets.querySelectorAll('a-asset-item');
-          if(items.length === 0){ setModelsReady(); }
-          else {
+        function watchModels(){
+          function attachListeners(assets){
+            assets.addEventListener('loaded', setModelsReady);
+            var items = assets.querySelectorAll('a-asset-item');
+            if(items.length === 0){
+              setModelsReady();
+              return;
+            }
             var remain = items.length;
             items.forEach(function(it){
               it.addEventListener('loaded', function(){
-                remain--; if(remain <= 0) setModelsReady();
+                remain -= 1;
+                if(remain <= 0) setModelsReady();
               });
             });
           }
-        } else {
-          // assets 要素がまだ無ければ DOMContentLoaded 後に再チェック
-          document.addEventListener('DOMContentLoaded', function(){
-            var a = document.querySelector('a-assets'); if(a) a.addEventListener('loaded', function(){ setModelsReady(); });
-          });
+
+          var assets = document.querySelector('a-assets');
+          if(assets){
+            attachListeners(assets);
+          } else {
+            document.addEventListener('DOMContentLoaded', function(){
+              var a = document.querySelector('a-assets');
+              if(a){ attachListeners(a); }
+            });
+          }
         }
 
-        window.addEventListener('beforeunload', clearModelsReady);
+        window.addEventListener('load', function(){
+          watchCamera();
+          watchModels();
+        });
+        window.addEventListener('beforeunload', function(){
+          clearReady();
+          clearModelsReady();
+        });
       })();
-      </script>
+    </script>
   </body>
 </html>
