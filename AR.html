@@ -182,11 +182,11 @@
 
   <div id="model-loading-indicator">モデルを表示中...</div>
 
-  <a-scene
-    embedded
-    arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 640; sourceHeight: 480;"
-    renderer="colorManagement: true; exposure: 1.2;"
-  >
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      renderer="colorManagement: true; exposure: 1.2;"
+    >
     <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
     <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
