@@ -1,9 +1,36 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <title>AR恐竜図鑑 カメラ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AR.js 自転 サンプル</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+      // --- あなたのFirebase設定コードをここに貼り付け ---
+      const firebaseConfig = {
+        apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
+        authDomain: "ar-stamp-6d9ed.firebaseapp.com",
+        projectId: "ar-stamp-6d9ed",
+        storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
+        messagingSenderId: "238550666098",
+        appId: "1:238550666098:web:8c161928290c093bf8abeb",
+        measurementId: "G-44D1V7P76C"
+      };
+      // -------------------------------------------
+
+      // Firebaseの初期化
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+
+      // 匿名ログインの実行
+      signInAnonymously(auth).catch((error) => {
+        console.error("ログインエラー:", error);
+      });
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
@@ -196,127 +223,43 @@
       <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
     </a-assets>
 
-    <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
-    <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
+      // 後で使うためにグローバル変数として公開（簡易的な実装のため）
+      window.db = db;
+      window.getUid = () => uid;
+      window.activeMarkerId = null;
 
-    <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="raujaa">
-      <a-entity swipe-rotate>
-        <a-entity rotation="0 0 0">
-          <a-entity
-            gltf-model="#raujaa-glb"
-            scale="0.4 0.4 0.4"
-            auto-center>
-          </a-entity>
-        </a-entity>
-      </a-entity>
-    </a-marker>
-
-    <a-marker type="pattern" url="markers/pattern-stanp.patt" id="toriko">
-      <a-entity swipe-rotate>
-        <a-entity rotation="0 0 0">
-          <a-entity
-            gltf-model="#toriko-glb"
-            scale="0.4 0.4 0.4"
-            auto-center>
-          </a-entity>
-        </a-entity>
-      </a-entity>
-    </a-marker>
-
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <script>
-    let currentMarkerId = "";
-
-    const markerNames = {
-      raujaa: "ラウジャア",
-      toriko: "トリケラ"
-    };
-
-    function setupMarkerEvents() {
-      const collectBtn = document.getElementById("collect-btn");
-      const markers = document.querySelectorAll("a-marker");
+      // ボタンとデータベースの連携
+      const btn = document.getElementById('collect-btn');
+      const markers = document.querySelectorAll('a-marker');
 
       markers.forEach((marker) => {
-        marker.addEventListener("markerFound", () => {
-          currentMarkerId = marker.id;
-          collectBtn.style.display = "block";
-          console.log("マーカー認識:", marker.id);
+        marker.addEventListener('markerFound', () => {
+          window.activeMarkerId = marker.id;
+          btn.style.display = 'block';
         });
 
-        marker.addEventListener("markerLost", () => {
-          if (currentMarkerId === marker.id) {
-            currentMarkerId = "";
+        marker.addEventListener('markerLost', () => {
+          if (window.activeMarkerId === marker.id) {
+            window.activeMarkerId = null;
           }
-
-          collectBtn.style.display = "none";
-          console.log("マーカー解除:", marker.id);
+          btn.style.display = 'none';
         });
       });
-    }
-
-    function setupModelLoadingEvents() {
-      const indicator = document.getElementById("model-loading-indicator");
-
-      const models = [
-        {
-          id: "raujaa",
-          selector: '#raujaa [gltf-model]',
-          name: "ラウジャア"
-        },
-        {
-          id: "toriko",
-          selector: '#toriko [gltf-model]',
-          name: "トリケラ"
-        }
-      ];
-
-      models.forEach((item) => {
-        const modelEl = document.querySelector(item.selector);
-
-        if (!modelEl) return;
-
-        modelEl.addEventListener("model-loaded", () => {
-          console.log(`${item.name} モデル読み込み完了`);
-          indicator.style.display = "none";
-        });
-
-        modelEl.addEventListener("model-error", () => {
-          console.error(`${item.name} モデル読み込み失敗`);
-          indicator.innerText = `${item.name} の表示に失敗しました`;
-          indicator.style.display = "block";
-
-          setTimeout(() => {
-            indicator.style.display = "none";
-          }, 2000);
-        });
-      });
-    }
 
     function setupCollectButton() {
       const collectBtn = document.getElementById("collect-btn");
 
       collectBtn.addEventListener("click", async () => {
         const uid = window.getUid();
+        const markerId = window.activeMarkerId;
 
-        if (!uid) {
-          alert("ログイン中です。少々お待ちください。");
-          return;
-        }
-
-        if (!currentMarkerId) {
-          alert("マーカーを読み取ってください。");
-          return;
-        }
+        if (!uid) return alert("ログイン中です。少々お待ちください。");
+        if (!markerId) return alert("マーカーを認識してください。");
 
         try {
-          const db = window.db;
-          const setDoc = window.setDocRef;
-          const doc = window.docRef;
-
-          await setDoc(doc(db, "users", uid, "collections", currentMarkerId), {
-            markerId: currentMarkerId,
+          // 認識中のマーカーIDごとに保存する
+          await setDoc(doc(db, "users", uid, "collections", markerId), {
+            markerId: markerId,
             timestamp: new Date()
           });
 
@@ -328,13 +271,143 @@
           alert("保存に失敗しました。");
         }
       });
-    }
+    </script>
 
-    document.addEventListener("DOMContentLoaded", () => {
-      setupMarkerEvents();
-      setupModelLoadingEvents();
-      setupCollectButton();
-    });
-  </script>
-</body>
+    <style>
+      #collect-btn {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 30px;
+        background-color: #ff5722;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        font-size: 18px;
+        font-weight: bold;
+        display: none; /* 最初は隠しておく */
+        z-index: 1000;
+      }
+    </style>
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <button id="collect-btn">今のをゲットする！</button>
+    <a href="collection.html" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 10px; text-decoration: none; border-radius: 5px; z-index: 1000;">図鑑を見る</a>
+    <a-scene embedded arjs renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
+      <a-assets>
+        <a-asset-item id="Corythosaurus-glb" src="models/コリトサウルス/Corythosaurus.glb"></a-asset-item>
+        <a-asset-item id="Ravjaa-glb" src="models/ラウジャア/Ravjaa.glb"></a-asset-item>
+        <a-asset-item id="Zavacephale-glb" src="models/サヴァケファレ/Zavacephale.glb"></a-asset-item>
+        <a-asset-item id="Protoceratops-glb" src="models/プロトケラトプス/Protoceratops.glb"></a-asset-item>
+      </a-assets>
+
+      <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
+
+      <!-- マーカー情報を追加 -->
+      <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Protoceratops">
+        <a-entity swipe-rotate>
+          <a-entity rotation="0 0 0">
+            <a-entity 
+                gltf-model="#Protoceratops-glb" 
+                scale="1 1 1"
+                auto-center>
+            </a-entity>
+          </a-entity>
+        </a-entity>
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="Ravjaa">
+        <a-entity swipe-rotate>
+          <a-entity rotation="0 0 0">
+            <a-entity 
+              gltf-model="#Ravjaa-glb"
+              scale="1 1 1"
+              auto-center>
+            </a-entity>
+          </a-entity>
+        </a-entity>
+      </a-marker>
+
+      <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="Zavacephale">
+        <a-entity swipe-rotate>
+          <a-entity rotation="0 0 0">
+            <a-entity 
+              gltf-model="#Zavacephale-glb"
+              scale="0.07 0.07 0.07"
+              auto-center>
+            </a-entity>
+          </a-entity>
+        </a-entity>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+    <script>
+      (function(){
+        function setReady(){
+          try { localStorage.setItem('ar_camera_ready','1'); } catch(e) { console.warn('ar_camera_ready error', e); }
+        }
+        function clearReady(){
+          try { localStorage.removeItem('ar_camera_ready'); } catch(e) { console.warn('ar_camera_ready clear error', e); }
+        }
+        function setModelsReady(){
+          try { localStorage.setItem('ar_models_ready','1'); } catch(e) { console.warn('ar_models_ready error', e); }
+        }
+        function clearModelsReady(){
+          try { localStorage.removeItem('ar_models_ready'); } catch(e) { console.warn('ar_models_ready clear error', e); }
+        }
+
+        function watchCamera(){
+          var checkInterval = setInterval(function(){
+            var v = document.querySelector('video');
+            if(v){
+              if(!v.paused && v.readyState > 2){ setReady(); }
+              v.addEventListener('playing', setReady);
+              v.addEventListener('loadeddata', function(){ if(!v.paused) setReady(); });
+              clearInterval(checkInterval);
+            }
+          }, 300);
+        }
+
+        function watchModels(){
+          function attachListeners(assets){
+            assets.addEventListener('loaded', setModelsReady);
+            var items = assets.querySelectorAll('a-asset-item');
+            if(items.length === 0){
+              setModelsReady();
+              return;
+            }
+            var remain = items.length;
+            items.forEach(function(it){
+              it.addEventListener('loaded', function(){
+                remain -= 1;
+                if(remain <= 0) setModelsReady();
+              });
+            });
+          }
+
+          var assets = document.querySelector('a-assets');
+          if(assets){
+            attachListeners(assets);
+          } else {
+            document.addEventListener('DOMContentLoaded', function(){
+              var a = document.querySelector('a-assets');
+              if(a){ attachListeners(a); }
+            });
+          }
+        }
+
+        window.addEventListener('load', function(){
+          watchCamera();
+          watchModels();
+        });
+        window.addEventListener('beforeunload', function(){
+          clearReady();
+          clearModelsReady();
+        });
+      })();
+    </script>
+  </body>
 </html>

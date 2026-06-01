@@ -65,6 +65,22 @@
       cursor: pointer;
       z-index: 3000; /* A-Frameより手前に表示 */
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+
+      /* 詳細ボタンのスタイル */
+    .detail-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #2196F3; /* 青系の色 */
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .detail-btn:hover {
+      background: #1976D2;
+    }
     }
   </style>
 </head>
@@ -82,6 +98,7 @@
       <div id="model-container"></div>
       <h2 id="modal-title">名前</h2>
       <p id="modal-desc">説明文</p>
+      <a id="modal-link-btn" class="detail-btn" href="#" target="_blank" style="display: none;">詳細を見る</a>
     </div>
   </div>
 
@@ -148,41 +165,25 @@
 
     // キャラクター情報
     const charData = {
-      "hiro": {
-        name: "コリトサウルス",
-        desc: "あなたの心を射抜いちゃうぞっ！コリトサウルスが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
-        type: "glb",
-        model: "models/コリトサウルス/base_basic_pbr.glb",
-        scale: "0.4 0.4 0.4",
-        position: "0 -0.6 0",
-        camera: "0 0 4"
+      "Protoceratops": {
+        name: "プロトケラトプス",
+        desc: "あなたの心を射抜いちゃうぞっ！プロトケラトプスが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
+        url: "https://www.ous.ac.jp/common/files//202210281320210885382.pdf",
+        model: "models/プロトケラトプス/Protoceratops.glb"
       },
-      "tanq": {
-        name: "たんQ君",
-        desc: "あなたに興味津々！たんQ君が、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
-        type: "obj",
-        model: "models/tanQ/tanQ.obj",
-        scale: "0.4 0.4 0.4",
-        position: "0 -0.6 0",
-        camera: "0 0 4"
-      },
-      "raujaa": {
+      // 他のマーカー(例: "kanji")を増やす場合はここに追加
+      "Ravjaa": {
         name: "ラウジャア",
-        desc: "ラウジャアが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
-        type: "glb",
-        model: "models/raujaa/raujaa.glb",
-        scale: "0.4 0.4 0.4",
-        position: "0 -0.6 0",
-        camera: "0 0 4"
+        desc: "あなたに興味津々！ラウジャアが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
+        url: "https://www.ous.ac.jp/common/files//202504071232270270933.pdf",
+        model: "models/ラウジャア/Ravjaa.glb"
       },
-      "toriko": {
-        name: "トリケラ",
-        desc: "トリケラが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
-        type: "glb",
-        model: "models/torikosaurusu/base_basic_shaded.glb",
-        scale: "0.4 0.4 0.4",
-        position: "0 -0.6 0",
-        camera: "0 0 4"
+
+      "Zavacephale": {
+        name: "サヴァケファレ",
+        desc: "あなたに興味津々！サヴァケファレが、ARマーカーから飛び出して、君のコレクションに加わったよ。指で回してよく見てみよう。",
+        url: "https://blob-storage.f-portal.pref.fukushima.lg.jp/common-article/68d64086d6595221ff0b346d/20250918+%E6%9C%80%E5%8F%A4%E3%81%AE%E9%A0%AD%E7%AA%81%E3%81%8D%E6%81%90%E7%AB%9C%E5%8C%96%E7%9F%B3%E3%82%92%E6%96%B0%E5%B1%9E%E6%96%B0%E7%A8%AE%E3%80%8C%E3%82%B6%E3%83%B4%E3%82%A1%E3%82%B1%E3%83%95%E3%82%A1%E3%83%AC%E3%83%BB%E3%83%AA%E3%83%B3%E3%83%9D%E3%83%81%E3%82%A7%E3%80%8D%E3%82%92%E7%99%BA%E8%A6%8B+HP%E7%94%A8+%281%29-cleaned%281%29.pdf",
+        model: "models/サヴァケファレ/Zavacephale.glb"
       }
     };
 
@@ -215,6 +216,15 @@
     function showDetail(info) {
       document.getElementById('modal-title').innerText = info.name;
       document.getElementById('modal-desc').innerText = info.desc;
+
+      const linkBtn = document.getElementById('modal-link-btn');
+      if (info.url) {
+        linkBtn.href = info.url;
+        linkBtn.style.display = 'inline-block'; // URLがあれば表示
+      } else {
+        linkBtn.style.display = 'none'; // URLがなければ隠す
+      }
+
       const container = document.getElementById('model-container');
       container.innerHTML = '';
 
@@ -226,11 +236,7 @@
             : `<a-entity gltf-model="#model" scale="${info.scale}" auto-center></a-entity>`;
 
         const sceneHtml = `
-          <a-scene embedded renderer="colorManagement: true; exposure: 1.2;" style="width: 100%; height: 100%;">
-            <a-assets>
-              <a-asset-item id="model" src="${info.model}"></a-asset-item>
-            </a-assets>
-
+          <a-scene embedded renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;" style="width: 100%; height: 100%;">
             <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
             <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
