@@ -188,39 +188,58 @@
         startBtn.disabled = true;
       }
 
-      // ページ読み込み完了時にARを初期化
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAR);
-      } else {
+      // ページ読み込み完了時にAR初期化とイベント登録
+      function setupARandEvents() {
+        // start-ar-btn のイベント登録
+        const startBtn = document.getElementById('start-ar-btn');
+        if (!startBtn) {
+          console.error("start-ar-btn が見つかりません");
+          return;
+        }
+        startBtn.addEventListener('click', () => {
+          console.log("カメラ起動ボタンが押されました");
+          startAR();
+        });
+
+        // collect-btn のイベント登録
+        const collectBtn = document.getElementById('collect-btn');
+        if (!collectBtn) {
+          console.error("collect-btn が見つかりません");
+          return;
+        }
+        collectBtn.addEventListener('click', async () => {
+          const uid = window.getUid();
+          if (!uid) return alert("ログイン中です。少々お待ちください。");
+          if (!currentMarkerId) return alert("マーカーを読み取ってください。");
+
+          try {
+            const db = window.db;
+            const setDoc = window.setDocRef;
+            const doc = window.docRef;
+            
+            await setDoc(doc(db, "users", uid, "collections", currentMarkerId), {
+              markerId: currentMarkerId,
+              timestamp: new Date()
+            });
+
+            alert("コレクションに追加しました！");
+            document.getElementById('collect-btn').style.display = 'none';
+          } catch (e) {
+            console.error("保存失敗:", e);
+            alert("保存に失敗しました。");
+          }
+        });
+
+        // ARを初期化
         initAR();
       }
 
-      // ボタンが押されたときのイベント処理
-      document.getElementById('start-ar-btn').addEventListener('click', startAR);
-
-      // collect-btnのクリック処理
-      document.getElementById('collect-btn').addEventListener('click', async () => {
-        const uid = window.getUid();
-        if (!uid) return alert("ログイン中です。少々お待ちください。");
-        if (!currentMarkerId) return alert("マーカーを読み取ってください。");
-
-        try {
-          const db = window.db;
-          const setDoc = window.setDocRef;
-          const doc = window.docRef;
-          
-          await setDoc(doc(db, "users", uid, "collections", currentMarkerId), {
-            markerId: currentMarkerId,
-            timestamp: new Date()
-          });
-
-          alert("コレクションに追加しました！");
-          document.getElementById('collect-btn').style.display = 'none';
-        } catch (e) {
-          console.error("保存失敗:", e);
-          alert("保存に失敗しました。");
-        }
-      });
+      // DOMContentLoaded で実行
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupARandEvents);
+      } else {
+        setupARandEvents();
+      }
     </script>
 
     <style>
