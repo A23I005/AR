@@ -47,16 +47,8 @@
       window.getUid = () => uid;
       window.uid = uid;
       window.setDocRef = setDoc;
-      window.docRef = doc;
-
-      // Firebase初期化が完了したらボタンを有効化
-      onAuthStateChanged(auth, (user) => {
-        const startBtn = document.getElementById('start-ar-btn');
-        if (user && startBtn) {
-          startBtn.disabled = false;
-          document.getElementById('status-text').innerText = "準備完了";
-        }
-      });    
+      window.docRef = doc;    
+      
       </script>
 
     <script>
@@ -125,9 +117,10 @@
     </script>
 
     <script>
-      // AR起動処理とマーカーイベント管理
+      // AR起動画面の初期化とマーカーイベント管理
 
       let currentMarkerId = "";
+      let arSceneReady = false;
 
       // マーカーイベント設定関数
       function setupMarkerEvents() {
@@ -149,17 +142,12 @@
         });
       }
 
-      // AR起動関数
-      function startAR() {
+      // ARシーン初期化関数（ページ読み込み後に実行）
+      function initAR() {
         const template = document.getElementById('ar-scene-template');
         const container = document.getElementById('ar-container');
-        const startupScreen = document.getElementById('startup-screen');
         const statusText = document.getElementById('status-text');
         const startBtn = document.getElementById('start-ar-btn');
-
-        // ステータス更新
-        statusText.innerText = "カメラを起動中...";
-        startBtn.disabled = true;
 
         // templateからa-sceneを生成
         const sceneContent = template.content.cloneNode(true);
@@ -168,10 +156,43 @@
         // マーカーイベントセットアップ
         setupMarkerEvents();
 
+        // モデル読み込み完了を監視
+        const scene = document.querySelector('a-scene');
+        if (scene) {
+          scene.addEventListener('loaded', () => {
+            arSceneReady = true;
+            statusText.innerText = "準備完了";
+            startBtn.disabled = false;
+            console.log("ARシーンの準備が完了しました");
+          });
+
+          // 念のため、5秒後にもチェック（loadedイベント保険）
+          setTimeout(() => {
+            if (!arSceneReady) {
+              arSceneReady = true;
+              statusText.innerText = "準備完了";
+              startBtn.disabled = false;
+              console.log("タイムアウトでARシーンを準備完了に");
+            }
+          }, 5000);
+        }
+      }
+
+      // AR起動関数（ボタン押下時）
+      function startAR() {
+        const startupScreen = document.getElementById('startup-screen');
+        const startBtn = document.getElementById('start-ar-btn');
+
         // 起動画面を隠す
-        setTimeout(() => {
-          startupScreen.classList.add('hidden');
-        }, 500);
+        startupScreen.classList.add('hidden');
+        startBtn.disabled = true;
+      }
+
+      // ページ読み込み完了時にARを初期化
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAR);
+      } else {
+        initAR();
       }
 
       // ボタンが押されたときのイベント処理
@@ -299,8 +320,8 @@
     <div id="startup-screen">
       <div id="startup-content">
         <h1>AR恐竜図鑑</h1>
-        <p>マーカーをカメラに映すと恐竜が出現します</p>
-        <p id="status-text">準備中...</p>
+        <p id="status-text">データを読み込み中...</p>
+        <p style="font-size: 12px; color: #999; margin-top: 20px;">初回は少し時間がかかります</p>
         <button id="start-ar-btn" disabled>カメラを起動する</button>
       </div>
     </div>
