@@ -1,176 +1,186 @@
-(<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-	<title>ARプリロード用ゲーム</title>
-	<!-- p5.js はゲーム開始時に遅延読み込みして初期表示を高速化 -->
-	<style>
-		html,body{margin:0;padding:0;height:100%;background:#0b0f1a;color:#0ff;font-family:Arial,Helvetica,sans-serif;}
-		#title-ui{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10000;background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.2));pointer-events:auto}
-		#title-ui h1{color:#0ff;margin:0 0 8px;font-size:28px}
-		#title-ui p{color:#9ff;margin:0 0 16px}
-		button{appearance:none;border:0;padding:12px 18px;border-radius:10px;background:#0ff;color:#002;font-weight:700}
-		#ar-button{display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 20px;background:#0f0;color:#020;border-radius:28px;font-weight:800;z-index:40}
-		#fire-btn{display:none;position:fixed;right:12px;bottom:80px;width:72px;height:72px;border-radius:50%;background:#ff5722;color:#fff;font-size:18px;border:0;z-index:10001}
-		#joystick-hint{position:fixed;left:12px;bottom:12px;color:#8ff;z-index:35;font-size:13px}
-		canvas{display:block;position:fixed;top:0;left:0;z-index:10;touch-action:none}
-	</style>
+  <meta charset="utf-8">
+  <title>AR恐竜図鑑</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f7f7f7;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 480px;
+      background: white;
+      padding: 32px 24px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 30px;
+    }
+
+    p {
+      line-height: 1.6;
+      color: #666;
+    }
+
+    #status-text {
+      margin-top: 24px;
+      color: #ff5722;
+      font-weight: bold;
+    }
+
+    .progress-wrap {
+      width: 100%;
+      height: 10px;
+      background: #eee;
+      border-radius: 999px;
+      margin: 18px 0 24px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #ff5722;
+      transition: width 0.3s ease;
+    }
+
+    #start-ar-btn {
+      padding: 15px 36px;
+      font-size: 18px;
+      background: #ff5722;
+      color: white;
+      border: none;
+      border-radius: 999px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      max-width: 280px;
+    }
+
+    #start-ar-btn:disabled {
+      background: #bbb;
+      cursor: not-allowed;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #999;
+      margin-top: 16px;
+    }
+
+    .links {
+      margin-top: 24px;
+      font-size: 14px;
+    }
+
+    .links a {
+      color: #333;
+    }
+  </style>
 </head>
+
 <body>
-	<div id="title-ui">
-		<h1>SPACE SHOOTER</h1>
-		<p>左側をドラッグで上下移動、右側で弾を撃つ（スマホ対応）</p>
-		<button id="start-btn">ゲーム開始</button>
-	</div>
+  <div class="container">
+    <h1>AR恐竜図鑑</h1>
 
-	<button id="ar-button">ARを起動</button>
-	<button id="fire-btn">FIRE</button>
-	<div id="joystick-hint">左をドラッグで移動</div>
+    <p>
+      3Dモデルを読み込んでから<br>
+      カメラを起動します。
+    </p>
 
-	<script>
-		// 軽量な p5.js ベースのシューティング（モバイル向け簡易実装）
-		let player;
-		let lastShotTime = 0;
-		let shotInterval = 200;
-		let bullets = [];
-		let enemies = [];
-		let stars = [];
-		let gameStarted = false;
-		let gameOver = false;
-		let killCount = 0;
-		let score = 0;
+    <div id="status-text">3Dモデルを読み込み中...</div>
 
-		let p5Loaded = false;
-		function setup(){
-			const cnv = createCanvas(windowWidth, windowHeight);
-			cnv.elt.style.touchAction = 'none';
-			for(let i=0;i<60;i++) stars.push(new Star());
-			player = new Player(80, height/2);
-			frameRate(60);
-		}
+    <div class="progress-wrap">
+      <div id="progress-bar"></div>
+    </div>
 
-		function windowResized(){
-			resizeCanvas(windowWidth, windowHeight);
-			player.y = constrain(player.y, 0, height);
-		}
+    <button id="start-ar-btn" disabled>カメラを起動する</button>
 
-		function draw(){
-			background(12,16,30);
-			for(let s of stars){ s.update(); s.draw(); }
+    <p class="note">
+      初回は少し時間がかかります。<br>
+      Wi-Fi環境での利用をおすすめします。
+    </p>
 
-			if(!gameStarted){ drawTitleEffect(); return; }
-			if(gameOver){ drawGameOver(); return; }
+    <div class="links">
+      <a href="collection.html">図鑑を見る</a>
+    </div>
+  </div>
 
-			// entities
-			for(let i=bullets.length-1;i>=0;i--){ bullets[i].update(); bullets[i].draw(); if(bullets[i].offscreen()) bullets.splice(i,1); }
-			for(let i=enemies.length-1;i>=0;i--){ enemies[i].update(); enemies[i].draw(); if(enemies[i].offscreen()) enemies.splice(i,1); }
+  <script>
+    const models = [
+      {
+        name: "ラウジャア",
+        url: "models/raujaa/raujaa.glb"
+      },
+      {
+        name: "トリケラ",
+        url: "models/torikosaurusu/base_basic_shaded.glb"
+      }
+    ];
 
-			// collisions
-			for(let i=enemies.length-1;i>=0;i--){
-				for(let j=bullets.length-1;j>=0;j--){
-					if(dist(bullets[j].x,bullets[j].y,enemies[i].x,enemies[i].y) < enemies[i].size/2){
-						score += enemies[i].scoreValue;
-						killCount++; enemies.splice(i,1); bullets.splice(j,1); break;
-					}
-				}
-			}
+    const statusText = document.getElementById("status-text");
+    const progressBar = document.getElementById("progress-bar");
+    const startBtn = document.getElementById("start-ar-btn");
 
-			player.update(); player.draw();
+    async function preloadModels() {
+      let loaded = 0;
+      let failed = 0;
 
-			// spawn enemies
-			if(frameCount % 30 === 0){ enemies.push(new Enemy()); }
+      startBtn.disabled = true;
+      progressBar.style.width = "0%";
 
-			drawHUD();
-		}
+      for (const model of models) {
+        try {
+          statusText.innerText = `${model.name} を読み込み中... ${loaded + 1}/${models.length}`;
 
-		function drawTitleEffect(){
-			fill(0,255,255,20); for(let y=0;y<height;y+=6) rect(0,y,width,2);
-		}
+          const response = await fetch(model.url, { cache: "force-cache" });
 
-		function drawHUD(){
-			fill(10,20,40,200); rect(8,8,140,72,8);
-			fill(0,255,255); textSize(16); textAlign(LEFT,TOP); text('SCORE: '+score, 16, 12); text('KILL: '+killCount,16,34);
-			for(let i=0;i<player.hp;i++) text('❤️', 16+i*22, 56);
-		}
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
 
-		// input: start button — p5 を遅延読み込みしてロードを速くする
-		document.getElementById('start-btn').addEventListener('click', ()=>{
-			// ボタンをすぐ無効化して連打防止
-			const btn = document.getElementById('start-btn'); btn.disabled = true; btn.innerText = '読み込み中...';
-			if(!p5Loaded){
-				const s = document.createElement('script');
-				s.src = 'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js';
-				s.onload = ()=>{ p5Loaded = true; gameStarted = true; document.getElementById('title-ui').style.display='none'; document.getElementById('fire-btn').style.display='block'; btn.innerText='ゲーム開始'; };
-				s.onerror = ()=>{ btn.disabled = false; btn.innerText='ゲーム開始'; alert('ゲームの読み込みに失敗しました。ネットワークを確認してください。'); };
-				document.head.appendChild(s);
-			} else {
-				gameStarted = true; document.getElementById('title-ui').style.display='none'; document.getElementById('fire-btn').style.display='block';
-			}
-			// すぐに AR の準備状況をチェック
-			checkArReady();
-		});
+          const blob = await response.blob();
 
-		// fire button
-		document.getElementById('fire-btn').addEventListener('touchstart', (e)=>{ e.preventDefault(); tryShoot(); });
-		document.getElementById('fire-btn').addEventListener('mousedown', (e)=>{ e.preventDefault(); tryShoot(); });
+          console.log("事前読み込み完了:", model.url, blob.size);
 
-		// right-side tap to shoot
-		function touchStarted(){
-			if(touches.length>0){
-				for(let t of touches){ if(t.x > width/2 && gameStarted && !gameOver){ tryShoot(); } else if(t.x <= width/2){ player.y = t.y; } }
-			}
-			return false;
-		}
-		function touchMoved(){ if(touches.length>0){ for(let t of touches){ if(t.x <= width/2) player.y = t.y; } } return false; }
+          loaded++;
+          progressBar.style.width = `${Math.round((loaded / models.length) * 100)}%`;
+        } catch (error) {
+          failed++;
+          console.error("事前読み込み失敗:", model.url, error);
+        }
+      }
 
-		// mouse support
-		function mouseDragged(){ if(mouseX <= width/2) player.y = mouseY; }
-		function mousePressed(){ if(mouseX > width/2 && gameStarted && !gameOver) tryShoot(); }
+      if (failed > 0) {
+        statusText.innerText = "一部モデルの読み込みに失敗しました。通信環境を確認してください。";
+        startBtn.disabled = false;
+        return;
+      }
 
-		function tryShoot(){
-			let now = millis(); if(now - lastShotTime > shotInterval){ bullets.push(new Bullet(player.x+player.size/2, player.y)); lastShotTime = now; }
-		}
+      statusText.innerText = "準備完了";
+      startBtn.disabled = false;
+    }
 
-		// simple classes
-		class Player{
-			constructor(x,y){ this.x=x; this.y=y; this.size=40; this.hp=3; }
-			update(){ this.y = constrain(this.y, this.size/2, height - this.size/2); }
-			draw(){ fill(0,200,255); noStroke(); ellipse(this.x, this.y, this.size, this.size); fill(0); textAlign(CENTER,CENTER); textSize(12); text('P', this.x, this.y); }
-		}
-		class Bullet{
-			constructor(x,y){ this.x=x; this.y=y; this.r=6; this.vx=8; }
-			update(){ this.x += this.vx; }
-			draw(){ fill(255,200,0); noStroke(); ellipse(this.x,this.y,this.r*2); }
-			offscreen(){ return this.x > width + 20; }
-		}
-		class Enemy{
-			constructor(){ this.x = width + random(40,120); this.y = random(40, height-40); this.size = random(26,48); this.vx = random(-2.5,-1.2); this.scoreValue = floor(this.size); }
-			update(){ this.x += this.vx; }
-			draw(){ fill(255,80,120); noStroke(); ellipse(this.x,this.y,this.size); }
-			offscreen(){ return this.x < -60; }
-		}
-		class Star{
-			constructor(){ this.x = random(width); this.y = random(height); this.z = random(0.5,2); }
-			update(){ this.x -= this.z; if(this.x < -10){ this.x = width + 10; this.y = random(height); } }
-			draw(){ fill(200,240,255,150); noStroke(); ellipse(this.x,this.y,2*this.z); }
-		}
+    startBtn.addEventListener("click", () => {
+      location.href = "AR.html";
+    });
 
-		function drawGameOver(){ background(10,0,20); fill(255,80,80); textAlign(CENTER,CENTER); textSize(42); text('GAME OVER', width/2, height/2-40); textSize(20); fill(255); text('SCORE: '+score, width/2, height/2+10); }
-
-// ARボタン制御：localStorage のキー 'ar_camera_ready' と 'ar_models_ready' を監視
-    function checkArReady(){ try{ var cam = localStorage.getItem('ar_camera_ready') === '1'; var mdl = localStorage.getItem('ar_models_ready') === '1'; if(cam && mdl){ document.getElementById('ar-button').style.display='block'; } else { document.getElementById('ar-button').style.display='none'; } }catch(e){} }
-    window.addEventListener('storage', (e)=>{ if(e.key === 'ar_camera_ready' || e.key === 'ar_models_ready') checkArReady(); });
-		// フォールバック：ポーリングで信頼性向上（別タブで設定されても確実に取得）
-		const arPoll = setInterval(checkArReady, 800);
-		// visibilitychange と focus でも再チェック
-		window.addEventListener('focus', checkArReady);
-		document.addEventListener('visibilitychange', checkArReady);
-		// 起動時に既にセットされていれば表示
-		checkArReady();
-
-		document.getElementById('ar-button').addEventListener('click', ()=>{ location.href = 'AR.html'; });
-
-	</script>
+    preloadModels();
+  </script>
 </body>
-</html>)
+</html>

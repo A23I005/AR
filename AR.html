@@ -32,14 +32,196 @@
         console.error("ログインエラー:", error);
       });
 
-      // ログイン状態の確認（ユーザーIDを取得するため）
-      let uid = "";
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          uid = user.uid;
-          console.log("ログイン完了！ ユーザーID:", uid);
-        }
-      });
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
+      authDomain: "ar-stamp-6d9ed.firebaseapp.com",
+      projectId: "ar-stamp-6d9ed",
+      storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
+      messagingSenderId: "238550666098",
+      appId: "1:238550666098:web:8c161928290c093bf8abeb",
+      measurementId: "G-44D1V7P76C"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let uid = "";
+
+    signInAnonymously(auth).catch((error) => {
+      console.error("ログインエラー:", error);
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        uid = user.uid;
+        console.log("ログイン完了！ ユーザーID:", uid);
+      }
+    });
+
+    window.db = db;
+    window.getUid = () => uid;
+    window.setDocRef = setDoc;
+    window.docRef = doc;
+  </script>
+
+  <script>
+    AFRAME.registerComponent('swipe-rotate', {
+      schema: { speed: { default: 0.5 } },
+
+      init: function () {
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+        this.isDragging = false;
+
+        window.addEventListener('touchstart', (e) => {
+          this.isDragging = true;
+          this.touchStartX = e.touches[0].clientX;
+          this.touchStartY = e.touches[0].clientY;
+        });
+
+        window.addEventListener('touchend', () => {
+          this.isDragging = false;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+          if (!this.isDragging) return;
+
+          const currentX = e.touches[0].clientX;
+          const currentY = e.touches[0].clientY;
+          const deltaX = currentX - this.touchStartX;
+          const deltaY = currentY - this.touchStartY;
+          const rotation = this.el.getAttribute('rotation');
+
+          this.el.setAttribute('rotation', {
+            x: rotation.x - deltaY * this.data.speed,
+            y: rotation.y + deltaX * this.data.speed,
+            z: rotation.z
+          });
+
+          this.touchStartX = currentX;
+          this.touchStartY = currentY;
+        });
+      }
+    });
+
+    AFRAME.registerComponent('auto-center', {
+      init: function () {
+        this.el.addEventListener('model-loaded', () => {
+          const mesh = this.el.getObject3D('mesh');
+          if (!mesh) return;
+
+          const clone = mesh.clone();
+          clone.position.set(0, 0, 0);
+          clone.rotation.set(0, 0, 0);
+          clone.scale.set(1, 1, 1);
+          clone.updateMatrixWorld(true);
+
+          const box = new THREE.Box3().setFromObject(clone);
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+
+          this.el.setAttribute('position', {
+            x: -center.x,
+            y: -center.y,
+            z: -center.z
+          });
+        });
+      }
+    });
+  </script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: sans-serif;
+    }
+
+    #collect-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 30px;
+      background-color: #ff5722;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-size: 18px;
+      font-weight: bold;
+      display: none;
+      z-index: 1000;
+    }
+
+    #collection-link {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 10px;
+      text-decoration: none;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+
+    #back-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 10px;
+      text-decoration: none;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+
+    #model-loading-indicator {
+      position: fixed;
+      bottom: 85px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 15px;
+      display: none;
+      z-index: 2000;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <button id="collect-btn">今のをゲットする！</button>
+
+  <a id="back-link" href="index.html">戻る</a>
+  <a id="collection-link" href="collection.html">図鑑を見る</a>
+
+  <div id="model-loading-indicator">モデルを表示中...</div>
+
+  <a-scene
+    embedded
+    arjs
+    renderer="colorManagement: true; exposure: 1.2;"
+    gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;"
+  >
+    <a-assets>
+      <a-asset-item id="raujaa-glb" src="models/raujaa/raujaa.glb"></a-asset-item>
+      <a-asset-item id="toriko-glb" src="models/torikosaurusu/base_basic_shaded.glb"></a-asset-item>
+    </a-assets>
 
       // 後で使うためにグローバル変数として公開（簡易的な実装のため）
       window.db = db;
@@ -64,8 +246,10 @@
         });
       });
 
-      // ボタンを押した時の保存処理
-      btn.onclick = async () => {
+    function setupCollectButton() {
+      const collectBtn = document.getElementById("collect-btn");
+
+      collectBtn.addEventListener("click", async () => {
         const uid = window.getUid();
         const markerId = window.activeMarkerId;
 
@@ -78,76 +262,13 @@
             markerId: markerId,
             timestamp: new Date()
           });
-          alert("コレクションに追加しました！");
-          btn.style.display = 'none';
+
+          const name = markerNames[currentMarkerId] || currentMarkerId;
+          alert(`${name} をコレクションに追加しました！`);
+          collectBtn.style.display = "none";
         } catch (e) {
           console.error("保存失敗:", e);
           alert("保存に失敗しました。");
-        }
-      };
-    </script>
-
-    <script>
-      // --- 1. スワイプで回転させるコンポーネント ---
-      AFRAME.registerComponent('swipe-rotate', {
-        schema: { speed: { default: 0.5 } },
-        init: function () {
-          this.touchStartX = 0;
-          this.touchStartY = 0;
-          this.isDragging = false;
-          window.addEventListener('touchstart', (e) => {
-            this.isDragging = true;
-            this.touchStartX = e.touches[0].clientX;
-            this.touchStartY = e.touches[0].clientY;
-          });
-          window.addEventListener('touchend', () => { this.isDragging = false; });
-          window.addEventListener('touchmove', (e) => {
-            if (!this.isDragging) return;
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const deltaX = currentX - this.touchStartX;
-            const deltaY = currentY - this.touchStartY;
-            const rotation = this.el.getAttribute('rotation');
-            
-            // X軸（上下）とY軸（左右）を回転させる
-            this.el.setAttribute('rotation', {
-              x: rotation.x - deltaY * this.data.speed,
-              y: rotation.y + deltaX * this.data.speed,
-              z: rotation.z
-            });
-            
-            this.touchStartX = currentX;
-            this.touchStartY = currentY;
-          });
-        }
-      });
-
-      // --- 2. オブジェクトの中心を【正確に】合わせるコンポーネント ---
-      AFRAME.registerComponent('auto-center', {
-        init: function () {
-          this.el.addEventListener('model-loaded', () => {
-            const mesh = this.el.getObject3D('mesh');
-            if (!mesh) return;
-
-            // 親の回転などの影響を排除するため、透明なクローンを作って純粋なサイズを測る
-            const clone = mesh.clone();
-            clone.position.set(0, 0, 0);
-            clone.rotation.set(0, 0, 0);
-            clone.scale.set(1, 1, 1);
-            clone.updateMatrixWorld(true);
-
-            // 純粋なローカルサイズから中心を計算
-            const box = new THREE.Box3().setFromObject(clone);
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-
-            // 中心が親要素の原点(0,0,0)に重なるように、逆方向にずらす
-            this.el.setAttribute('position', {
-              x: -center.x,
-              y: -center.y,
-              z: -center.z
-            });
-          });
         }
       });
     </script>
