@@ -1,176 +1,274 @@
-(<!DOCTYPE html>
-<html lang="ja">
+<!DOCTYPE html>
+<html>
 <head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-	<title>ARプリロード用ゲーム</title>
-	<!-- p5.js はゲーム開始時に遅延読み込みして初期表示を高速化 -->
-	<style>
-		html,body{margin:0;padding:0;height:100%;background:#0b0f1a;color:#0ff;font-family:Arial,Helvetica,sans-serif;}
-		#title-ui{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10000;background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.2));pointer-events:auto}
-		#title-ui h1{color:#0ff;margin:0 0 8px;font-size:28px}
-		#title-ui p{color:#9ff;margin:0 0 16px}
-		button{appearance:none;border:0;padding:12px 18px;border-radius:10px;background:#0ff;color:#002;font-weight:700}
-		#ar-button{display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 20px;background:#0f0;color:#020;border-radius:28px;font-weight:800;z-index:40}
-		#fire-btn{display:none;position:fixed;right:12px;bottom:80px;width:72px;height:72px;border-radius:50%;background:#ff5722;color:#fff;font-size:18px;border:0;z-index:10001}
-		#joystick-hint{position:fixed;left:12px;bottom:12px;color:#8ff;z-index:35;font-size:13px}
-		canvas{display:block;position:fixed;top:0;left:0;z-index:10;touch-action:none}
-	</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR体験 - 恐竜マーカー</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .description {
+            color: #666;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            font-size: 16px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #ar-button {
+            display: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #ar-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+        }
+
+        #ar-button:active {
+            transform: translateY(0);
+        }
+
+        .ready-badge {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .info-text {
+            font-size: 14px;
+            color: #999;
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+
+        /* 隠しiframe用 */
+        #ar-iframe {
+            display: none;
+            width: 0;
+            height: 0;
+            border: none;
+            position: fixed;
+            bottom: -9999px;
+            right: -9999px;
+        }
+
+        .error-text {
+            color: #f44336;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
-	<div id="title-ui">
-		<h1>SPACE SHOOTER</h1>
-		<p>左側をドラッグで上下移動、右側で弾を撃つ（スマホ対応）</p>
-		<button id="start-btn">ゲーム開始</button>
-	</div>
+    <div class="container">
+        <h1>🦕 AR恐竜図鑑 🦖</h1>
+        
+        <p class="description">
+            マーカーをカメラで認識すると、恐竜がARで表示されます。<br>
+            スムーズなカメラ起動をお待ちください...
+        </p>
 
-	<button id="ar-button">ARを起動</button>
-	<button id="fire-btn">FIRE</button>
-	<div id="joystick-hint">左をドラッグで移動</div>
+        <div class="status">
+            <span class="status-text">
+                <span class="spinner"></span>
+                <span id="status-message">カメラを準備中...</span>
+            </span>
+        </div>
 
-	<script>
-		// 軽量な p5.js ベースのシューティング（モバイル向け簡易実装）
-		let player;
-		let lastShotTime = 0;
-		let shotInterval = 200;
-		let bullets = [];
-		let enemies = [];
-		let stars = [];
-		let gameStarted = false;
-		let gameOver = false;
-		let killCount = 0;
-		let score = 0;
+        <button id="ar-button">
+            🎬 AR体験を開始
+        </button>
 
-		let p5Loaded = false;
-		function setup(){
-			const cnv = createCanvas(windowWidth, windowHeight);
-			cnv.elt.style.touchAction = 'none';
-			for(let i=0;i<60;i++) stars.push(new Star());
-			player = new Player(80, height/2);
-			frameRate(60);
-		}
+        <p class="info-text">
+            ※ カメラへのアクセスを許可してください。<br>
+            ※ マーカーについては付属のマーカーを使用してください。
+        </p>
+    </div>
 
-		function windowResized(){
-			resizeCanvas(windowWidth, windowHeight);
-			player.y = constrain(player.y, 0, height);
-		}
+    <!-- バックグラウンドでAR.htmlを読み込んでカメラ準備状態を監視 -->
+    <iframe id="ar-iframe" src="AR.html"></iframe>
 
-		function draw(){
-			background(12,16,30);
-			for(let s of stars){ s.update(); s.draw(); }
+    <script>
+        const arButton = document.getElementById('ar-button');
+        const statusMessage = document.getElementById('status-message');
+        const arIframe = document.getElementById('ar-iframe');
+        const container = document.querySelector('.container');
 
-			if(!gameStarted){ drawTitleEffect(); return; }
-			if(gameOver){ drawGameOver(); return; }
+        let cameraReady = false;
+        let modelsReady = false;
+        let checkInterval = null;
+        let setupTimeout = null;
 
-			// entities
-			for(let i=bullets.length-1;i>=0;i--){ bullets[i].update(); bullets[i].draw(); if(bullets[i].offscreen()) bullets.splice(i,1); }
-			for(let i=enemies.length-1;i>=0;i--){ enemies[i].update(); enemies[i].draw(); if(enemies[i].offscreen()) enemies.splice(i,1); }
+        function checkARReady() {
+            try {
+                // AR.htmlのlocalStorageから状態を確認
+                // iframe内のlocalStorageにアクセスするため、postMessageで通信する必要もあるが、
+                // 同一オリジン＆同じドメイン上なら直接アクセス可能な場合もある
+                // より安全な実装は下記に変更
+                
+                // フレーム内のwindowオブジェクトを確認
+                if (arIframe.contentWindow) {
+                    const storage = arIframe.contentWindow.localStorage;
+                    cameraReady = storage.getItem('ar_camera_ready') === '1';
+                    modelsReady = storage.getItem('ar_models_ready') === '1';
+                }
+            } catch (e) {
+                // Cross-originエラーが発生した場合は、popupで代替実装
+                console.log('iframe監視方法を切り替えます', e);
+                switchToPopupMethod();
+            }
 
-			// collisions
-			for(let i=enemies.length-1;i>=0;i--){
-				for(let j=bullets.length-1;j>=0;j--){
-					if(dist(bullets[j].x,bullets[j].y,enemies[i].x,enemies[i].y) < enemies[i].size/2){
-						score += enemies[i].scoreValue;
-						killCount++; enemies.splice(i,1); bullets.splice(j,1); break;
-					}
-				}
-			}
+            // ステータス更新
+            updateStatus();
 
-			player.update(); player.draw();
+            // どちらも完了したらボタン表示
+            if (cameraReady && modelsReady) {
+                showButton();
+                clearInterval(checkInterval);
+            }
+        }
 
-			// spawn enemies
-			if(frameCount % 30 === 0){ enemies.push(new Enemy()); }
+        function updateStatus() {
+            if (!cameraReady) {
+                statusMessage.textContent = 'カメラを準備中...';
+            } else if (!modelsReady) {
+                statusMessage.textContent = 'モデルを読み込み中...';
+            } else {
+                statusMessage.textContent = 'すべての準備が完了しました！';
+            }
+        }
 
-			drawHUD();
-		}
+        function showButton() {
+            arButton.style.display = 'block';
+            statusMessage.innerHTML = '<span style="color: #4caf50;">✓ 準備完了！タップして開始</span>';
+            
+            // スピナーを非表示
+            const spinner = document.querySelector('.spinner');
+            if (spinner) spinner.style.display = 'none';
 
-		function drawTitleEffect(){
-			fill(0,255,255,20); for(let y=0;y<height;y+=6) rect(0,y,width,2);
-		}
+            // バッジを表示
+            const badge = document.createElement('div');
+            badge.className = 'ready-badge';
+            badge.textContent = '✓ 準備完了';
+            statusMessage.parentElement.appendChild(badge);
+        }
 
-		function drawHUD(){
-			fill(10,20,40,200); rect(8,8,140,72,8);
-			fill(0,255,255); textSize(16); textAlign(LEFT,TOP); text('SCORE: '+score, 16, 12); text('KILL: '+killCount,16,34);
-			for(let i=0;i<player.hp;i++) text('❤️', 16+i*22, 56);
-		}
+        function switchToPopupMethod() {
+            console.log('ポップアップ方式に切り替え');
+            // iframeアプローチが失敗した場合、直接AR.htmlを開く準備
+            clearInterval(checkInterval);
+            statusMessage.textContent = 'セットアップ中...';
+            
+            // 簡単な準備完了検出: 3秒後に表示
+            setTimeout(() => {
+                showButton();
+                statusMessage.innerHTML = '<span style="color: #4caf50;">✓ 準備完了！タップして開始</span>';
+            }, 3000);
+        }
 
-		// input: start button — p5 を遅延読み込みしてロードを速くする
-		document.getElementById('start-btn').addEventListener('click', ()=>{
-			// ボタンをすぐ無効化して連打防止
-			const btn = document.getElementById('start-btn'); btn.disabled = true; btn.innerText = '読み込み中...';
-			if(!p5Loaded){
-				const s = document.createElement('script');
-				s.src = 'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js';
-				s.onload = ()=>{ p5Loaded = true; gameStarted = true; document.getElementById('title-ui').style.display='none'; document.getElementById('fire-btn').style.display='block'; btn.innerText='ゲーム開始'; };
-				s.onerror = ()=>{ btn.disabled = false; btn.innerText='ゲーム開始'; alert('ゲームの読み込みに失敗しました。ネットワークを確認してください。'); };
-				document.head.appendChild(s);
-			} else {
-				gameStarted = true; document.getElementById('title-ui').style.display='none'; document.getElementById('fire-btn').style.display='block';
-			}
-			// すぐに AR の準備状況をチェック
-			checkArReady();
-		});
+        // ボタンクリック時の処理
+        arButton.addEventListener('click', () => {
+            // AR.htmlへ遷移
+            window.location.href = 'AR.html';
+        });
 
-		// fire button
-		document.getElementById('fire-btn').addEventListener('touchstart', (e)=>{ e.preventDefault(); tryShoot(); });
-		document.getElementById('fire-btn').addEventListener('mousedown', (e)=>{ e.preventDefault(); tryShoot(); });
+        // ページロード時に監視開始
+        window.addEventListener('load', () => {
+            // 100msごとに状態確認
+            checkInterval = setInterval(checkARReady, 100);
 
-		// right-side tap to shoot
-		function touchStarted(){
-			if(touches.length>0){
-				for(let t of touches){ if(t.x > width/2 && gameStarted && !gameOver){ tryShoot(); } else if(t.x <= width/2){ player.y = t.y; } }
-			}
-			return false;
-		}
-		function touchMoved(){ if(touches.length>0){ for(let t of touches){ if(t.x <= width/2) player.y = t.y; } } return false; }
+            // 最大10秒待機（レスポンス向上のため）
+            setupTimeout = setTimeout(() => {
+                if (!cameraReady || !modelsReady) {
+                    console.warn('準備完了待機がタイムアウト');
+                    showButton(); // 強制表示
+                }
+                clearInterval(checkInterval);
+            }, 10000);
+        });
 
-		// mouse support
-		function mouseDragged(){ if(mouseX <= width/2) player.y = mouseY; }
-		function mousePressed(){ if(mouseX > width/2 && gameStarted && !gameOver) tryShoot(); }
-
-		function tryShoot(){
-			let now = millis(); if(now - lastShotTime > shotInterval){ bullets.push(new Bullet(player.x+player.size/2, player.y)); lastShotTime = now; }
-		}
-
-		// simple classes
-		class Player{
-			constructor(x,y){ this.x=x; this.y=y; this.size=40; this.hp=3; }
-			update(){ this.y = constrain(this.y, this.size/2, height - this.size/2); }
-			draw(){ fill(0,200,255); noStroke(); ellipse(this.x, this.y, this.size, this.size); fill(0); textAlign(CENTER,CENTER); textSize(12); text('P', this.x, this.y); }
-		}
-		class Bullet{
-			constructor(x,y){ this.x=x; this.y=y; this.r=6; this.vx=8; }
-			update(){ this.x += this.vx; }
-			draw(){ fill(255,200,0); noStroke(); ellipse(this.x,this.y,this.r*2); }
-			offscreen(){ return this.x > width + 20; }
-		}
-		class Enemy{
-			constructor(){ this.x = width + random(40,120); this.y = random(40, height-40); this.size = random(26,48); this.vx = random(-2.5,-1.2); this.scoreValue = floor(this.size); }
-			update(){ this.x += this.vx; }
-			draw(){ fill(255,80,120); noStroke(); ellipse(this.x,this.y,this.size); }
-			offscreen(){ return this.x < -60; }
-		}
-		class Star{
-			constructor(){ this.x = random(width); this.y = random(height); this.z = random(0.5,2); }
-			update(){ this.x -= this.z; if(this.x < -10){ this.x = width + 10; this.y = random(height); } }
-			draw(){ fill(200,240,255,150); noStroke(); ellipse(this.x,this.y,2*this.z); }
-		}
-
-		function drawGameOver(){ background(10,0,20); fill(255,80,80); textAlign(CENTER,CENTER); textSize(42); text('GAME OVER', width/2, height/2-40); textSize(20); fill(255); text('SCORE: '+score, width/2, height/2+10); }
-
-// ARボタン制御：localStorage のキー 'ar_camera_ready' と 'ar_models_ready' を監視
-    function checkArReady(){ try{ var cam = localStorage.getItem('ar_camera_ready') === '1'; var mdl = localStorage.getItem('ar_models_ready') === '1'; if(cam && mdl){ document.getElementById('ar-button').style.display='block'; } else { document.getElementById('ar-button').style.display='none'; } }catch(e){} }
-    window.addEventListener('storage', (e)=>{ if(e.key === 'ar_camera_ready' || e.key === 'ar_models_ready') checkArReady(); });
-		// フォールバック：ポーリングで信頼性向上（別タブで設定されても確実に取得）
-		const arPoll = setInterval(checkArReady, 800);
-		// visibilitychange と focus でも再チェック
-		window.addEventListener('focus', checkArReady);
-		document.addEventListener('visibilitychange', checkArReady);
-		// 起動時に既にセットされていれば表示
-		checkArReady();
-
-		document.getElementById('ar-button').addEventListener('click', ()=>{ location.href = 'AR.html'; });
-
-	</script>
+        // クリーンアップ
+        window.addEventListener('beforeunload', () => {
+            if (checkInterval) clearInterval(checkInterval);
+            if (setupTimeout) clearTimeout(setupTimeout);
+        });
+    </script>
 </body>
-</html>)
+</html>
