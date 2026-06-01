@@ -1,0 +1,161 @@
+(<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+	<title>ARプリロード用ゲーム</title>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+	<style>
+		html,body{margin:0;padding:0;height:100%;background:#0b0f1a;color:#0ff;font-family:Arial,Helvetica,sans-serif;}
+		#title-ui{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:30;background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.2));}
+		#title-ui h1{color:#0ff;margin:0 0 8px;font-size:28px}
+		#title-ui p{color:#9ff;margin:0 0 16px}
+		button{appearance:none;border:0;padding:12px 18px;border-radius:10px;background:#0ff;color:#002;font-weight:700}
+		#ar-button{display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 20px;background:#0f0;color:#020;border-radius:28px;font-weight:800;z-index:40}
+		#fire-btn{display:none;position:fixed;right:12px;bottom:80px;width:72px;height:72px;border-radius:50%;background:#ff5722;color:#fff;font-size:18px;border:0;z-index:35}
+		#joystick-hint{position:fixed;left:12px;bottom:12px;color:#8ff;z-index:35;font-size:13px}
+		canvas{display:block}
+	</style>
+</head>
+<body>
+	<div id="title-ui">
+		<h1>SPACE SHOOTER</h1>
+		<p>左側をドラッグで上下移動、右側で弾を撃つ（スマホ対応）</p>
+		<button id="start-btn">ゲーム開始</button>
+	</div>
+
+	<button id="ar-button">ARを起動</button>
+	<button id="fire-btn">FIRE</button>
+	<div id="joystick-hint">左をドラッグで移動</div>
+
+	<script>
+		// 軽量な p5.js ベースのシューティング（モバイル向け簡易実装）
+		let player;
+		let lastShotTime = 0;
+		let shotInterval = 200;
+		let bullets = [];
+		let enemies = [];
+		let stars = [];
+		let gameStarted = false;
+		let gameOver = false;
+		let killCount = 0;
+		let score = 0;
+
+		function setup(){
+			const cnv = createCanvas(windowWidth, windowHeight);
+			cnv.elt.style.touchAction = 'none';
+			for(let i=0;i<60;i++) stars.push(new Star());
+			player = new Player(80, height/2);
+			frameRate(60);
+		}
+
+		function windowResized(){
+			resizeCanvas(windowWidth, windowHeight);
+			player.y = constrain(player.y, 0, height);
+		}
+
+		function draw(){
+			background(12,16,30);
+			for(let s of stars){ s.update(); s.draw(); }
+
+			if(!gameStarted){ drawTitleEffect(); return; }
+			if(gameOver){ drawGameOver(); return; }
+
+			// entities
+			for(let i=bullets.length-1;i>=0;i--){ bullets[i].update(); bullets[i].draw(); if(bullets[i].offscreen()) bullets.splice(i,1); }
+			for(let i=enemies.length-1;i>=0;i--){ enemies[i].update(); enemies[i].draw(); if(enemies[i].offscreen()) enemies.splice(i,1); }
+
+			// collisions
+			for(let i=enemies.length-1;i>=0;i--){
+				for(let j=bullets.length-1;j>=0;j--){
+					if(dist(bullets[j].x,bullets[j].y,enemies[i].x,enemies[i].y) < enemies[i].size/2){
+						score += enemies[i].scoreValue;
+						killCount++; enemies.splice(i,1); bullets.splice(j,1); break;
+					}
+				}
+			}
+
+			player.update(); player.draw();
+
+			// spawn enemies
+			if(frameCount % 30 === 0){ enemies.push(new Enemy()); }
+
+			drawHUD();
+		}
+
+		function drawTitleEffect(){
+			fill(0,255,255,20); for(let y=0;y<height;y+=6) rect(0,y,width,2);
+		}
+
+		function drawHUD(){
+			fill(10,20,40,200); rect(8,8,140,72,8);
+			fill(0,255,255); textSize(16); textAlign(LEFT,TOP); text('SCORE: '+score, 16, 12); text('KILL: '+killCount,16,34);
+			for(let i=0;i<player.hp;i++) text('❤️', 16+i*22, 56);
+		}
+
+		// input: start button
+		document.getElementById('start-btn').addEventListener('click', ()=>{
+			gameStarted = true; document.getElementById('title-ui').style.display='none';
+			document.getElementById('fire-btn').style.display='block';
+			// on mobile, show AR button if already ready
+			checkArReady();
+		});
+
+		// fire button
+		document.getElementById('fire-btn').addEventListener('touchstart', (e)=>{ e.preventDefault(); tryShoot(); });
+		document.getElementById('fire-btn').addEventListener('mousedown', (e)=>{ e.preventDefault(); tryShoot(); });
+
+		// right-side tap to shoot
+		function touchStarted(){
+			if(touches.length>0){
+				for(let t of touches){ if(t.x > width/2 && gameStarted && !gameOver){ tryShoot(); } else if(t.x <= width/2){ player.y = t.y; } }
+			}
+			return false;
+		}
+		function touchMoved(){ if(touches.length>0){ for(let t of touches){ if(t.x <= width/2) player.y = t.y; } } return false; }
+
+		// mouse support
+		function mouseDragged(){ if(mouseX <= width/2) player.y = mouseY; }
+		function mousePressed(){ if(mouseX > width/2 && gameStarted && !gameOver) tryShoot(); }
+
+		function tryShoot(){
+			let now = millis(); if(now - lastShotTime > shotInterval){ bullets.push(new Bullet(player.x+player.size/2, player.y)); lastShotTime = now; }
+		}
+
+		// simple classes
+		class Player{
+			constructor(x,y){ this.x=x; this.y=y; this.size=40; this.hp=3; }
+			update(){ this.y = constrain(this.y, this.size/2, height - this.size/2); }
+			draw(){ fill(0,200,255); noStroke(); ellipse(this.x, this.y, this.size, this.size); fill(0); textAlign(CENTER,CENTER); textSize(12); text('P', this.x, this.y); }
+		}
+		class Bullet{
+			constructor(x,y){ this.x=x; this.y=y; this.r=6; this.vx=8; }
+			update(){ this.x += this.vx; }
+			draw(){ fill(255,200,0); noStroke(); ellipse(this.x,this.y,this.r*2); }
+			offscreen(){ return this.x > width + 20; }
+		}
+		class Enemy{
+			constructor(){ this.x = width + random(40,120); this.y = random(40, height-40); this.size = random(26,48); this.vx = random(-2.5,-1.2); this.scoreValue = floor(this.size); }
+			update(){ this.x += this.vx; }
+			draw(){ fill(255,80,120); noStroke(); ellipse(this.x,this.y,this.size); }
+			offscreen(){ return this.x < -60; }
+		}
+		class Star{
+			constructor(){ this.x = random(width); this.y = random(height); this.z = random(0.5,2); }
+			update(){ this.x -= this.z; if(this.x < -10){ this.x = width + 10; this.y = random(height); } }
+			draw(){ fill(200,240,255,150); noStroke(); ellipse(this.x,this.y,2*this.z); }
+		}
+
+		function drawGameOver(){ background(10,0,20); fill(255,80,80); textAlign(CENTER,CENTER); textSize(42); text('GAME OVER', width/2, height/2-40); textSize(20); fill(255); text('SCORE: '+score, width/2, height/2+10); }
+
+		// ARボタン制御：localStorage のキー 'ar_camera_ready' を監視
+		function checkArReady(){ try{ if(localStorage.getItem('ar_camera_ready') === '1'){ document.getElementById('ar-button').style.display='block'; } }catch(e){} }
+		window.addEventListener('storage', (e)=>{ if(e.key === 'ar_camera_ready') checkArReady(); });
+		// 起動時に既にセットされていれば表示
+		checkArReady();
+
+		document.getElementById('ar-button').addEventListener('click', ()=>{ location.href = 'AR.html'; });
+
+	</script>
+</body>
+</html>)

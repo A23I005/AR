@@ -222,5 +222,27 @@
 
       <a-entity camera></a-entity>
     </a-scene>
+    <script>
+      (function(){
+        function setReady(){
+          try{ localStorage.setItem('ar_camera_ready','1'); }catch(e){}
+        }
+        function clearReady(){
+          try{ localStorage.removeItem('ar_camera_ready'); }catch(e){}
+        }
+
+        var checkInterval = setInterval(function(){
+          var v = document.querySelector('video');
+          if(v){
+            if(!v.paused && v.readyState > 2){ setReady(); }
+            v.addEventListener('playing', setReady);
+            v.addEventListener('loadeddata', function(){ if(!v.paused) setReady(); });
+            clearInterval(checkInterval);
+          }
+        }, 300);
+
+        window.addEventListener('beforeunload', clearReady);
+      })();
+    </script>
   </body>
 </html>
