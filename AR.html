@@ -10,7 +10,6 @@
       import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
       import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-      // --- あなたのFirebase設定コードをここに貼り付け ---
       const firebaseConfig = {
         apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
         authDomain: "ar-stamp-6d9ed.firebaseapp.com",
@@ -20,19 +19,15 @@
         appId: "1:238550666098:web:8c161928290c093bf8abeb",
         measurementId: "G-44D1V7P76C"
       };
-      // -------------------------------------------
 
-      // Firebaseの初期化
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
 
-      // 匿名ログインの実行
       signInAnonymously(auth).catch((error) => {
         console.error("ログインエラー:", error);
       });
 
-      // ログイン状態の確認（ユーザーIDを取得するため）
       let uid = "";
       onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -41,12 +36,10 @@
         }
       });
 
-      // 後で使うためにグローバル変数として公開（簡易的な実装のため）
       window.db = db;
       window.getUid = () => uid;
       window.activeMarkerId = null;
 
-      // ボタンとデータベースの連携
       const btn = document.getElementById('collect-btn');
       const markers = document.querySelectorAll('a-marker');
 
@@ -64,7 +57,6 @@
         });
       });
 
-      // ボタンを押した時の保存処理
       btn.onclick = async () => {
         const uid = window.getUid();
         const markerId = window.activeMarkerId;
@@ -73,7 +65,6 @@
         if (!markerId) return alert("マーカーを認識してください。");
 
         try {
-          // 認識中のマーカーIDごとに保存する
           await setDoc(doc(db, "users", uid, "collections", markerId), {
             markerId: markerId,
             timestamp: new Date()
@@ -88,7 +79,6 @@
     </script>
 
     <script>
-      // --- 1. スワイプで回転させるコンポーネント ---
       AFRAME.registerComponent('swipe-rotate', {
         schema: { speed: { default: 0.5 } },
         init: function () {
@@ -109,7 +99,6 @@
             const deltaY = currentY - this.touchStartY;
             const rotation = this.el.getAttribute('rotation');
             
-            // X軸（上下）とY軸（左右）を回転させる
             this.el.setAttribute('rotation', {
               x: rotation.x - deltaY * this.data.speed,
               y: rotation.y + deltaX * this.data.speed,
@@ -122,26 +111,21 @@
         }
       });
 
-      // --- 2. オブジェクトの中心を【正確に】合わせるコンポーネント ---
       AFRAME.registerComponent('auto-center', {
         init: function () {
           this.el.addEventListener('model-loaded', () => {
             const mesh = this.el.getObject3D('mesh');
             if (!mesh) return;
-
-            // 親の回転などの影響を排除するため、透明なクローンを作って純粋なサイズを測る
             const clone = mesh.clone();
             clone.position.set(0, 0, 0);
             clone.rotation.set(0, 0, 0);
             clone.scale.set(1, 1, 1);
             clone.updateMatrixWorld(true);
 
-            // 純粋なローカルサイズから中心を計算
             const box = new THREE.Box3().setFromObject(clone);
             const center = new THREE.Vector3();
             box.getCenter(center);
 
-            // 中心が親要素の原点(0,0,0)に重なるように、逆方向にずらす
             this.el.setAttribute('position', {
               x: -center.x,
               y: -center.y,
@@ -165,7 +149,7 @@
         border-radius: 25px;
         font-size: 18px;
         font-weight: bold;
-        display: none; /* 最初は隠しておく */
+        display: none;
         z-index: 1000;
       }
     </style>
@@ -173,26 +157,18 @@
   <body style="margin: 0; overflow: hidden;">
     <button id="collect-btn">今のをゲットする！</button>
     <a href="collection.html" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 10px; text-decoration: none; border-radius: 5px; z-index: 1000;">図鑑を見る</a>
+    
     <a-scene embedded arjs renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
-      <a-assets>
-        <a-asset-item id="Corythosaurus-glb" src="models/コリトサウルス/Corythosaurus.glb"></a-asset-item>
-        <a-asset-item id="Ravjaa-glb" src="models/ラウジャア/Ravjaa.glb"></a-asset-item>
-        <a-asset-item id="Zavacephale-glb" src="models/サヴァケファレ/Zavacephale.glb"></a-asset-item>
-        <a-asset-item id="Protoceratops-glb" src="models/プロトケラトプス/Protoceratops.glb"></a-asset-item>
-      </a-assets>
+      <a-assets timeout="1000">
+        </a-assets>
 
       <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
       <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
-      <!-- マーカー情報を追加 -->
       <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Protoceratops">
         <a-entity swipe-rotate>
           <a-entity rotation="0 0 0">
-            <a-entity 
-                gltf-model="#Protoceratops-glb" 
-                scale="1 1 1"
-                auto-center>
-            </a-entity>
+            <a-entity id="model-Protoceratops" scale="1 1 1" auto-center></a-entity>
           </a-entity>
         </a-entity>
       </a-marker>
@@ -200,11 +176,7 @@
       <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="Ravjaa">
         <a-entity swipe-rotate>
           <a-entity rotation="0 0 0">
-            <a-entity 
-              gltf-model="#Ravjaa-glb"
-              scale="1 1 1"
-              auto-center>
-            </a-entity>
+            <a-entity id="model-Ravjaa" scale="1 1 1" auto-center></a-entity>
           </a-entity>
         </a-entity>
       </a-marker>
@@ -212,30 +184,34 @@
       <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="Zavacephale">
         <a-entity swipe-rotate>
           <a-entity rotation="0 0 0">
-            <a-entity 
-              gltf-model="#Zavacephale-glb"
-              scale="0.07 0.07 0.07"
-              auto-center>
-            </a-entity>
+            <a-entity id="model-Zavacephale" scale="0.07 0.07 0.07" auto-center></a-entity>
           </a-entity>
         </a-entity>
       </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
+
     <script>
       (function(){
+        // 非同期で1つずつモデルを順番に読み込むリスト
+        const modelList = [
+          { id: 'model-Protoceratops', src: 'models/プロトケラトプス/Protoceratops.glb' },
+          { id: 'model-Ravjaa', src: 'models/ラウジャア/Ravjaa.glb' },
+          { id: 'model-Zavacephale', src: 'models/サヴァケファレ/Zavacephale.glb' }
+        ];
+
         function setReady(){
-          try { localStorage.setItem('ar_camera_ready','1'); } catch(e) { console.warn('ar_camera_ready error', e); }
+          try { localStorage.setItem('ar_camera_ready','1'); } catch(e) {}
         }
         function clearReady(){
-          try { localStorage.removeItem('ar_camera_ready'); } catch(e) { console.warn('ar_camera_ready clear error', e); }
+          try { localStorage.removeItem('ar_camera_ready'); } catch(e) {}
         }
         function setModelsReady(){
-          try { localStorage.setItem('ar_models_ready','1'); } catch(e) { console.warn('ar_models_ready error', e); }
+          try { localStorage.setItem('ar_models_ready','1'); } catch(e) {}
         }
         function clearModelsReady(){
-          try { localStorage.removeItem('ar_models_ready'); } catch(e) { console.warn('ar_models_ready clear error', e); }
+          try { localStorage.removeItem('ar_models_ready'); } catch(e) {}
         }
 
         function watchCamera(){
@@ -250,38 +226,49 @@
           }, 300);
         }
 
-        function watchModels(){
-          function attachListeners(assets){
-            assets.addEventListener('loaded', setModelsReady);
-            var items = assets.querySelectorAll('a-asset-item');
-            if(items.length === 0){
-              setModelsReady();
-              return;
-            }
-            var remain = items.length;
-            items.forEach(function(it){
-              it.addEventListener('loaded', function(){
-                remain -= 1;
-                if(remain <= 0) setModelsReady();
-              });
-            });
-          }
+        // カメラが起動した後に、重いモデルを1つずつ「非同期（バックグラウンド）」でロードする関数
+        async function loadModelsSequentially() {
+          const assets = document.querySelector('a-assets');
+          if (!assets) return;
 
-          var assets = document.querySelector('a-assets');
-          if(assets){
-            attachListeners(assets);
-          } else {
-            document.addEventListener('DOMContentLoaded', function(){
-              var a = document.querySelector('a-assets');
-              if(a){ attachListeners(a); }
+          for (let i = 0; i < modelList.length; i++) {
+            const m = modelList[i];
+            await new Promise((resolve) => {
+              const item = document.createElement('a-asset-item');
+              item.setAttribute('id', m.id + '-asset');
+              item.setAttribute('src', m.src);
+              
+              // 読み込み完了、またはエラーが起きても次のモデルに進む
+              item.addEventListener('loaded', () => {
+                const entity = document.getElementById(m.id);
+                if (entity) {
+                  entity.setAttribute('gltf-model', '#' + m.id + '-asset');
+                }
+                resolve();
+              });
+              item.addEventListener('error', () => {
+                console.error("モデルの読み込みに失敗しました: " + m.src);
+                resolve();
+              });
+              
+              assets.appendChild(item);
             });
           }
+          // すべてのモデルの裏読み込み・配置が完了
+          setModelsReady();
         }
 
         window.addEventListener('load', function(){
           watchCamera();
-          watchModels();
+          // シーンが初期化されたら非同期ロードを開始する
+          const scene = document.querySelector('a-scene');
+          if (scene.hasLoaded) {
+            loadModelsSequentially();
+          } else {
+            scene.addEventListener('loaded', loadModelsSequentially);
+          }
         });
+
         window.addEventListener('beforeunload', function(){
           clearReady();
           clearModelsReady();
