@@ -121,34 +121,48 @@
 
       let currentMarkerId = "";
       let arSceneReady = false;
-      let modelLoadingInterval = null;
 
-      // 読み込み表示関数
-      function showModelLoading(name) {
-        const indicator = document.getElementById('model-loading-indicator');
-        const text = document.getElementById('model-loading-text');
-        if (indicator && text) {
-          text.innerText = `${name} を読み込み中...`;
-          indicator.style.display = 'flex';
-        }
-      }
+      // モデル事前読み込み関数
+      function preloadModels() {
+        const statusText = document.getElementById('status-text');
+        const startBtn = document.getElementById('start-ar-btn');
+        const models = [
+          'models/raujaa/raujaa.glb',
+          'models/torikosaurusu/base_basic_shaded.glb'
+        ];
+        
+        let loadedCount = 0;
+        let failedCount = 0;
 
-      function updateModelLoadingProgress(percent) {
-        const progress = document.getElementById('model-loading-progress');
-        if (progress) {
-          progress.style.width = percent + '%';
-        }
-      }
-
-      function hideModelLoading() {
-        const indicator = document.getElementById('model-loading-indicator');
-        if (indicator) {
-          indicator.style.display = 'none';
-        }
-        if (modelLoadingInterval) {
-          clearInterval(modelLoadingInterval);
-          modelLoadingInterval = null;
-        }
+        models.forEach((modelUrl, index) => {
+          fetch(modelUrl)
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              loadedCount++;
+              console.log(`モデル読み込み成功: ${modelUrl} (${loadedCount}/${models.length})`);
+              statusText.innerText = `3Dモデルを読み込み中... ${loadedCount}/${models.length}`;
+              
+              if (loadedCount + failedCount === models.length) {
+                arSceneReady = true;
+                statusText.innerText = "準備完了";
+                startBtn.disabled = false;
+                if (failedCount > 0) {
+                  console.warn(`${failedCount}個のモデル読み込みに失敗しました`);
+                }
+              }
+            })
+            .catch(error => {
+              failedCount++;
+              console.error(`モデル読み込み失敗: ${modelUrl}`, error);
+              
+              if (loadedCount + failedCount === models.length) {
+                arSceneReady = true;
+                statusText.innerText = "準備完了";
+                startBtn.disabled = false;
+                console.warn("一部モデルの事前読み込みに失敗しました。カメラ起動後に読み込まれる場合があります。");
+              }
+            });
+        });
       }
 
       // マーカーイベント設定関数
@@ -171,11 +185,11 @@
         });
       }
 
-      // ARシーン初期化関数（ページ読み込み後に実行）
-      function initAR() {
+      // AR起動関数（ボタン押下時にa-sceneを生成）
+      function startAR() {
         const template = document.getElementById('ar-scene-template');
         const container = document.getElementById('ar-container');
-        const statusText = document.getElementById('status-text');
+        const startupScreen = document.getElementById('startup-screen');
         const startBtn = document.getElementById('start-ar-btn');
 
         // templateからa-sceneを生成
@@ -185,33 +199,6 @@
         // マーカーイベントセットアップ
         setupMarkerEvents();
 
-        // モデル読み込み完了を監視
-        const scene = document.querySelector('a-scene');
-        if (scene) {
-          scene.addEventListener('loaded', () => {
-            arSceneReady = true;
-            statusText.innerText = "準備完了";
-            startBtn.disabled = false;
-            console.log("ARシーンの準備が完了しました");
-          });
-
-          // 念のため、5秒後にもチェック（loadedイベント保険）
-          setTimeout(() => {
-            if (!arSceneReady) {
-              arSceneReady = true;
-              statusText.innerText = "準備完了";
-              startBtn.disabled = false;
-              console.log("タイムアウトでARシーンを準備完了に");
-            }
-          }, 5000);
-        }
-      }
-
-      // AR起動関数（ボタン押下時）
-      function startAR() {
-        const startupScreen = document.getElementById('startup-screen');
-        const startBtn = document.getElementById('start-ar-btn');
-
         // 起動画面を隠す
         startupScreen.classList.add('hidden');
         startBtn.disabled = true;
@@ -219,6 +206,9 @@
 
       // ページ読み込み完了時にAR初期化とイベント登録
       function setupARandEvents() {
+        // モデル事前読み込みを開始
+        preloadModels();
+
         // start-ar-btn のイベント登録
         const startBtn = document.getElementById('start-ar-btn');
         if (!startBtn) {
@@ -258,9 +248,6 @@
             alert("保存に失敗しました。");
           }
         });
-
-        // ARを初期化
-        initAR();
       }
 
       // DOMContentLoaded で実行
