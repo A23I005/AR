@@ -2,204 +2,106 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR体験 - 恐竜マーカー</title>
+    
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
     <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
 
+    <style>
+        /* UIのスタイル（既存のものに合わせて調整） */
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s;
+        }
+        #ar-container { visibility: hidden; }
+        #collect-btn {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            padding: 15px 30px; font-size: 18px; font-weight: bold;
+            background: #ff5722; color: white; border: none; border-radius: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 1000; display: none;
+        }
+    </style>
+
     <script type="module">
+        // Firebaseの設定と初期化
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Firebaseの設定
         const firebaseConfig = {
             apiKey: "AIzaSyB6sOyrSwjY7fZaPEGDvn0iormTPWhjQsY",
             authDomain: "ar-stamp-6d9ed.firebaseapp.com",
             projectId: "ar-stamp-6d9ed",
             storageBucket: "ar-stamp-6d9ed.firebasestorage.app",
-            messagingSenderId: "238550666098",
-            appId: "1:238550666098:web:8c161928290c093bf8abeb",
-            measurementId: "G-44D1V7P76C"
+            messagingSenderId: "2..." // ※実際のIDが入ります
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        signInAnonymously(auth).catch((error) => console.error("ログインエラー:", error));
-
-        let uid = "";
+        let currentUser = null;
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                uid = user.uid;
-                console.log("Firebaseログイン完了:", uid);
-            }
+            if (user) currentUser = user;
         });
+        signInAnonymously(auth).catch(console.error);
 
-        // ボタンのクリック処理
-        const btn = document.getElementById('collect-btn');
-        btn.onclick = async () => {
-            const markerId = window.activeMarkerId;
-            if (!uid) return alert("ログイン処理中です。少々お待ちください。");
-            if (!markerId) return alert("マーカーを認識してください。");
-
+        // 「図鑑に登録する」ボタンの処理
+        document.getElementById('collect-btn').addEventListener('click', async () => {
+            if (!currentUser || !window.activeMarkerId) return;
             try {
-                await setDoc(doc(db, "users", uid, "collections", markerId), {
-                    markerId: markerId,
-                    timestamp: new Date()
+                await setDoc(doc(db, "users", currentUser.uid, "collection", window.activeMarkerId), {
+                    collectedAt: new Date()
                 });
-                alert("コレクションに追加しました！");
-                btn.style.display = 'none';
+                alert('図鑑に登録しました！');
             } catch (e) {
-                console.error("保存失敗:", e);
-                alert("保存に失敗しました。");
-            }
-        };
-    </script>
-
-    <script>
-        // A-Frame コンポーネント登録
-        AFRAME.registerComponent('swipe-rotate', {
-            schema: { speed: { default: 0.5 } },
-            init: function () {
-                this.touchStartX = 0; this.touchStartY = 0; this.isDragging = false;
-                window.addEventListener('touchstart', (e) => {
-                    this.isDragging = true;
-                    this.touchStartX = e.touches[0].clientX;
-                    this.touchStartY = e.touches[0].clientY;
-                });
-                window.addEventListener('touchend', () => { this.isDragging = false; });
-                window.addEventListener('touchmove', (e) => {
-                    if (!this.isDragging) return;
-                    const currentX = e.touches[0].clientX;
-                    const currentY = e.touches[0].clientY;
-                    const deltaX = currentX - this.touchStartX;
-                    const deltaY = currentY - this.touchStartY;
-                    const rotation = this.el.getAttribute('rotation');
-                    this.el.setAttribute('rotation', {
-                        x: rotation.x - deltaY * this.data.speed,
-                        y: rotation.y + deltaX * this.data.speed,
-                        z: rotation.z
-                    });
-                    this.touchStartX = currentX; this.touchStartY = currentY;
-                });
-            }
-        });
-
-        AFRAME.registerComponent('auto-center', {
-            init: function () {
-                this.el.addEventListener('model-loaded', () => {
-                    const mesh = this.el.getObject3D('mesh');
-                    if (!mesh) return;
-                    const clone = mesh.clone();
-                    clone.position.set(0, 0, 0); clone.rotation.set(0, 0, 0); clone.scale.set(1, 1, 1);
-                    clone.updateMatrixWorld(true);
-                    const box = new THREE.Box3().setFromObject(clone);
-                    const center = new THREE.Vector3();
-                    box.getCenter(center);
-                    this.el.setAttribute('position', { x: -center.x, y: -center.y, z: -center.z });
-                });
+                console.error("Error adding document: ", e);
+                alert('登録に失敗しました。');
             }
         });
     </script>
-
-    <style>
-        /* --- ローディング・案内画面のスタイル --- */
-        #start-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 9999; font-family: sans-serif; transition: opacity 0.5s ease;
-        }
-        .container {
-            text-align: center; background: white; border-radius: 20px;
-            padding: 40px 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px; width: 90%;
-        }
-        h1 { color: #333; margin-bottom: 20px; font-size: 28px; }
-        .description { color: #666; font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
-        .status-box { margin-bottom: 25px; padding: 15px; background: #f7f9fc; border-radius: 12px; }
-        .status-item { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; font-size: 15px; color: #4a5568; }
-        .spinner { width: 20px; height: 20px; border: 3px solid #e2e8f0; border-top: 3px solid #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .ready-icon { color: #10b981; font-weight: bold; }
-        
-        #ar-button {
-            background: #4f46e5; color: white; border: none; padding: 16px 32px;
-            font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer;
-            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4); width: 100%; display: none;
-        }
-
-        /* --- AR画面表示時のスタイル --- */
-        #ar-container {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            visibility: hidden; z-index: 1;
-        }
-        #collect-btn {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            padding: 15px 30px; background-color: #ff5722; color: white; border: none;
-            border-radius: 25px; font-size: 18px; font-weight: bold; display: none; z-index: 1000;
-        }
-        #to-collection-btn {
-            position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.6);
-            color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; z-index: 1000; font-size: 14px;
-        }
-    </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
+<body>
 
     <div id="start-screen">
-        <div class="container">
-            <h1>恐竜ARラリー</h1>
-            <p class="description">カメラと巨大な3Dモデルをバックグラウンドで安全に準備しています。完了までこのままお待ちください。</p>
-            <div class="status-box">
-                <div class="status-item">
-                    <span>3D恐竜モデルの読込:</span>
-                    <span id="models-status"><span class="spinner"></span></span>
-                </div>
-            </div>
-            <button id="ar-button">✓ 準備完了！ARを開始する</button>
-        </div>
+        <h2>ARカメラを起動中...</h2>
+        <p>マーカーをカメラに映してください</p>
     </div>
 
-    <div id="ar-container">
-        <button id="collect-btn">今のをゲットする！</button>
-        <a id="to-collection-btn" href="collection.html">図鑑を見る</a>
-        
-        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
-            <a-assets>
-                <a-asset-item id="Protoceratops-asset" src="models/プロトケラトプス/Protoceratops.glb"></a-asset-item>
-                <a-asset-item id="Ravjaa-asset" src="models/ラウジャア/Ravjaa.glb"></a-asset-item>
-                <a-asset-item id="Corythosaurus-asset" src="models/コリトサウルス/Corythosaurus.glb"></a-asset-item>
-                <a-asset-item id="Zavacephale-asset" src="models/サヴァケファレ/Zavacephale.glb"></a-asset-item>
-            </a-assets>
+    <button id="collect-btn">図鑑に登録する</button>
 
+    <div id="ar-container">
+        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" renderer="colorManagement: true; exposure: 1.2;" gltf-model="dracoDecoderPath: https://www.gstatic.com/draco/versioned/decoders/1.5.6/;">
+            
             <a-entity light="type: ambient; color: #BBB; intensity: 1.5"></a-entity>
             <a-entity light="type: directional; color: #FFF; intensity: 0.8" position="-1 1 1"></a-entity>
 
             <a-marker type="pattern" url="markers/pattern-stanp1.patt" id="Protoceratops">
                 <a-entity swipe-rotate><a-entity rotation="0 0 0">
-                    <a-entity gltf-model="#Protoceratops-asset" scale="1 1 1" auto-center></a-entity>
+                    <a-entity id="model-Protoceratops" scale="1 1 1" auto-center></a-entity>
                 </a-entity></a-entity>
             </a-marker>
 
             <a-marker type="pattern" url="markers/pattern-stanp2.patt" id="Ravjaa">
                 <a-entity swipe-rotate><a-entity rotation="0 0 0">
-                    <a-entity gltf-model="#Ravjaa-asset" scale="1 1 1" auto-center></a-entity>
+                    <a-entity id="model-Ravjaa" scale="1 1 1" auto-center></a-entity>
                 </a-entity></a-entity>
             </a-marker>
 
             <a-marker type="pattern" url="markers/pattern-stanp3.patt" id="Corythosaurus">
                 <a-entity swipe-rotate><a-entity rotation="0 0 0">
-                    <a-entity gltf-model="#Corythosaurus-asset" scale="0.4 0.4 0.4" auto-center animation-mixer></a-entity>
+                    <a-entity id="model-Corythosaurus" scale="0.4 0.4 0.4" auto-center animation-mixer></a-entity>
                 </a-entity></a-entity>
             </a-marker>
 
             <a-marker type="pattern" url="markers/pattern-stanp4.patt" id="Zavacephale">
                 <a-entity swipe-rotate><a-entity rotation="0 0 0">
-                    <a-entity gltf-model="#Zavacephale-asset" scale="0.07 0.07 0.07" auto-center></a-entity>
+                    <a-entity id="model-Zavacephale" scale="0.07 0.07 0.07" auto-center></a-entity>
                 </a-entity></a-entity>
             </a-marker>
 
@@ -208,34 +110,54 @@
     </div>
 
     <script>
+        // 各マーカーIDに対応する3Dモデルのパス（Draco圧縮済みのもの）
+        const modelPaths = {
+            'Protoceratops': 'models/プロトケラトプス/Protoceratops.glb',
+            'Ravjaa': 'models/ラウジャア/Ravjaa.glb',
+            'Corythosaurus': 'models/コリトサウルス/Corythosaurus.glb',
+            'Zavacephale': 'models/サヴァケファレ/Zavacephale.glb'
+        };
+
         window.activeMarkerId = null;
 
-        // マーカー検知のイベント登録
         const markers = document.querySelectorAll('a-marker');
         const collectBtn = document.getElementById('collect-btn');
+
+        // マーカーを検知したときの処理
         markers.forEach((marker) => {
             marker.addEventListener('markerFound', () => {
                 window.activeMarkerId = marker.id;
                 collectBtn.style.display = 'block';
+
+                // 【重要】ここで初めて3Dモデルを読み込む（遅延読み込み）
+                const targetModel = document.getElementById('model-' + marker.id);
+                if (targetModel && !targetModel.hasAttribute('gltf-model')) {
+                    console.log(marker.id + " のモデルを読み込み・解凍します...");
+                    targetModel.setAttribute('gltf-model', modelPaths[marker.id]);
+                }
             });
+
+            // マーカーを見失ったときの処理
             marker.addEventListener('markerLost', () => {
-                if (window.activeMarkerId === marker.id) window.activeMarkerId = null;
+                if (window.activeMarkerId === marker.id) {
+                    window.activeMarkerId = null;
+                }
                 collectBtn.style.display = 'none';
             });
         });
 
-        // ⭕ 事前ロードをやめ、ページを開いた瞬間に画面を切り替えるように変更
+        // ページ読み込み完了時の処理
         window.addEventListener('load', () => {
-            // 開始画面（ローディング）をすぐに消す
+            // ローディング画面を数秒後に消し、ARコンテナを表示する
             const startScreen = document.getElementById('start-screen');
+            const arContainer = document.getElementById('ar-container');
+            
             if (startScreen) {
                 startScreen.style.opacity = '0';
-                setTimeout(() => startScreen.style.display = 'none', 500);
-            }
-            // ARコンテナをすぐに見せる（必要なモデルだけ後から読み込まれます）
-            const arContainer = document.getElementById('ar-container');
-            if (arContainer) {
-                arContainer.style.visibility = 'visible';
+                setTimeout(() => {
+                    startScreen.style.display = 'none';
+                    if (arContainer) arContainer.style.visibility = 'visible';
+                }, 500);
             }
         });
     </script>
