@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR体験 - 恐竜マーカー</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script> <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
     <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
 
     <script type="module">
@@ -192,7 +193,7 @@
 
             <a-marker type="pattern" url="markers/pattern-stanp3.patt" id="Corythosaurus">
                 <a-entity swipe-rotate><a-entity rotation="0 0 0">
-                    <a-entity gltf-model="#Corythosaurus-asset" scale="1 1 1" auto-center></a-entity>
+                    <a-entity gltf-model="#Corythosaurus-asset" scale="0.5 0.5 0.5" auto-center animation-mixer></a-entity>
                 </a-entity></a-entity>
             </a-marker>
 
