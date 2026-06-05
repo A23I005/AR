@@ -224,38 +224,19 @@
             });
         });
 
-        // 3Dモデルの全ロード完了を監視
-        const assets = document.querySelector('a-assets');
-        const items = assets.querySelectorAll('a-asset-item');
-        let loadedCount = 0;
-
-        function checkAllAssetsLoaded() {
-            loadedCount++;
-            if (loadedCount >= items.length) {
-                // すべてのモデルがメモリ上に完全展開されたらボタンを表示
-                document.getElementById('models-status').innerHTML = '<span class="ready-icon">✓ 完了</span>';
-                document.getElementById('ar-button').style.display = 'block';
-            }
-        }
-
-        items.forEach((item) => {
-            if (item.hasLoaded) {
-                checkAllAssetsLoaded();
-            } else {
-                item.addEventListener('loaded', checkAllAssetsLoaded);
-                item.addEventListener('error', checkAllAssetsLoaded); // エラー時もスタック防止で進める
-            }
-        });
-
-        // 「ARを開始する」が押されたら一瞬でカメラ画面に切り替える
-        document.getElementById('ar-button').addEventListener('click', () => {
-            // 案内画面を消す
+        // ⭕ 事前ロードをやめ、ページを開いた瞬間に画面を切り替えるように変更
+        window.addEventListener('load', () => {
+            // 開始画面（ローディング）をすぐに消す
             const startScreen = document.getElementById('start-screen');
-            startScreen.style.opacity = '0';
-            setTimeout(() => startScreen.style.display = 'none', 500);
-
-            // 隠していたARシーンを「一瞬」で可視化する（ロードは終わっているので即カメラが映ります）
-            document.getElementById('ar-container').style.visibility = 'visible';
+            if (startScreen) {
+                startScreen.style.opacity = '0';
+                setTimeout(() => startScreen.style.display = 'none', 500);
+            }
+            // ARコンテナをすぐに見せる（必要なモデルだけ後から読み込まれます）
+            const arContainer = document.getElementById('ar-container');
+            if (arContainer) {
+                arContainer.style.visibility = 'visible';
+            }
         });
     </script>
 </body>
