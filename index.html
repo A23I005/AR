@@ -49,32 +49,63 @@
             padding: 20px;
             background: #f5f5f5;
             border-radius: 10px;
-            min-height: 60px;
+            min-height: 90px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
+        .status-wrapper {
+            width: 100%;
+        }
+
         .status-text {
-            font-size: 16px;
-            color: #999;
+            font-size: 15px;
+            color: #555;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
+            width: 100%;
         }
 
         .spinner {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #667eea;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             animation: spin 1s linear infinite;
+            flex-shrink: 0;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* ⭕ プログレスバーのスタイルを追加 */
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            height: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            transition: width 0.1s ease;
+        }
+
+        #percent-text {
+            font-weight: bold;
+            color: #764ba2;
+            font-size: 18px;
         }
 
         #ar-button {
@@ -98,41 +129,11 @@
             box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
         }
 
-        #ar-button:active {
-            transform: translateY(0);
-        }
-
-        .ready-badge {
-            display: inline-block;
-            background: #4caf50;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-
         .info-text {
             font-size: 14px;
             color: #999;
             margin-top: 15px;
             line-height: 1.5;
-        }
-
-        /* 隠しiframe用 */
-        #ar-iframe {
-            display: none;
-            width: 0;
-            height: 0;
-            border: none;
-            position: fixed;
-            bottom: -9999px;
-            right: -9999px;
-        }
-
-        .error-text {
-            color: #f44336;
-            margin-top: 15px;
         }
     </style>
 </head>
@@ -142,15 +143,22 @@
         <h1>🦕 AR恐竜図鑑 🦖</h1>
         
         <p class="description">
-            マーカーをカメラで認識すると、恐竜がARで表示されます。<br>
-            スムーズなカメラ起動をお待ちください...
+            快適にARを体験するために、裏で恐竜の3Dデータを先読みしています。しばらくお待ちください...
         </p>
 
         <div class="status">
-            <span class="status-text">
-                <span class="spinner"></span>
-                <span id="status-message">カメラを準備中...</span>
-            </span>
+            <div class="status-wrapper">
+                <div class="status-text">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="spinner" id="loading-spinner"></span>
+                        <span id="status-message">ダウンロードの準備中...</span>
+                    </div>
+                    <span id="percent-text">0%</span>
+                </div>
+                <div class="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+            </div>
         </div>
 
         <button id="ar-button">
@@ -159,118 +167,100 @@
 
         <p class="info-text">
             ※ カメラへのアクセスを許可してください。<br>
-            ※ マーカーについては付属のマーカーを使用してください。
+            ※ ダウンロード完了後、自動的にAR画面に移動します。
         </p>
     </div>
 
-    <!-- バックグラウンドでAR.htmlを読み込んでカメラ準備状態を監視 -->
-    <iframe id="ar-iframe" src="AR.html"></iframe>
-
     <script>
-        const arButton = document.getElementById('ar-button');
+        // 事前に読み込む4つの3Dモデルファイル（AR.htmlと同一のパス）
+        const modelUrls = [
+            'models/プロトケラトプス/Protoceratops.glb',
+            'models/ラウジャア/Ravjaa.glb',
+            'models/コリトサウルス/Corythosaurus.glb',
+            'models/サヴァケファレ/Zavacephale.glb'
+        ];
+
         const statusMessage = document.getElementById('status-message');
-        const arIframe = document.getElementById('ar-iframe');
-        const container = document.querySelector('.container');
+        const percentText = document.getElementById('percent-text');
+        const progressBar = document.getElementById('progress-bar');
+        const arButton = document.getElementById('ar-button');
+        const spinner = document.getElementById('loading-spinner');
 
-        let cameraReady = false;
-        let modelsReady = false;
-        let checkInterval = null;
-        let setupTimeout = null;
+        // 各モデルファイルを順番にFetchダウンロードして進捗を計算する関数
+        async function preloadModels() {
+            const totalFiles = modelUrls.length;
+            let completedFiles = 0;
 
-        function checkARReady() {
-            try {
-                // AR.htmlのlocalStorageから状態を確認
-                // iframe内のlocalStorageにアクセスするため、postMessageで通信する必要もあるが、
-                // 同一オリジン＆同じドメイン上なら直接アクセス可能な場合もある
-                // より安全な実装は下記に変更
-                
-                // フレーム内のwindowオブジェクトを確認
-                if (arIframe.contentWindow) {
-                    const storage = arIframe.contentWindow.localStorage;
-                    cameraReady = storage.getItem('ar_camera_ready') === '1';
-                    modelsReady = storage.getItem('ar_models_ready') === '1';
+            for (let i = 0; i < totalFiles; i++) {
+                const url = modelUrls[i];
+                // パスからファイル名だけを抽出して画面表示用に加工（例: Protoceratops.glb）
+                const fileName = url.substring(url.lastIndexOf('/') + 1);
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                    // サーバーからファイルサイズ（Content-Length）を取得
+                    const contentLength = response.headers.get('content-length');
+                    const total = contentLength ? parseInt(contentLength, 10) : 0;
+                    
+                    const reader = response.body.getReader();
+                    let loaded = 0;
+
+                    // ストリーミングでバイト単位の進捗を取得
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        loaded += value.length;
+
+                        // 現在のファイルの進捗率 (0 〜 1)
+                        const fileProgress = total > 0 ? (loaded / total) : 0;
+                        // 4つのファイル全体の合計進捗率 (0 〜 100)
+                        let overallProgress = ((completedFiles + fileProgress) / totalFiles) * 100;
+                        
+                        // 完全に処理が終わるまでは最高99%で留める（なめらかさのため）
+                        updateUI(Math.min(overallProgress, 99), `データを読み込み中: ${fileName}`);
+                    }
+
+                    // 1つのファイルが完全にダウンロード完了
+                    completedFiles++;
+                    const currentProgress = (completedFiles / totalFiles) * 100;
+                    updateUI(currentProgress, `データを読み込み中: ${fileName}`);
+
+                } catch (error) {
+                    console.error(`ダウンロード失敗: ${url}`, error);
+                    // エラーが起きてもエラーで全体を止めず、完了扱いにして次のファイルに進む（フォールバック）
+                    completedFiles++;
+                    updateUI((completedFiles / totalFiles) * 100, `一部データの読み込みをスキップしました`);
                 }
-            } catch (e) {
-                // Cross-originエラーが発生した場合は、popupで代替実装
-                console.log('iframe監視方法を切り替えます', e);
-                switchToPopupMethod();
             }
 
-            // ステータス更新
-            updateStatus();
-
-            // どちらも完了したらボタン表示
-            if (cameraReady && modelsReady) {
-                showButton();
-                clearInterval(checkInterval);
-            }
-        }
-
-        function updateStatus() {
-            if (!cameraReady) {
-                statusMessage.textContent = 'カメラを準備中...';
-            } else if (!modelsReady) {
-                statusMessage.textContent = 'モデルを読み込み中...';
-            } else {
-                statusMessage.textContent = 'すべての準備が完了しました！';
-            }
-        }
-
-        function showButton() {
-            arButton.style.display = 'block';
-            statusMessage.innerHTML = '<span style="color: #4caf50;">✓ 準備完了！タップして開始</span>';
-            
-            // スピナーを非表示
-            const spinner = document.querySelector('.spinner');
+            // すべてのファイルのダウンロードが100%完了
+            updateUI(100, 'すべての準備が完了しました！移動します...');
             if (spinner) spinner.style.display = 'none';
+            arButton.style.display = 'block';
 
-            // バッジを表示
-            const badge = document.createElement('div');
-            badge.className = 'ready-badge';
-            badge.textContent = '✓ 準備完了';
-            statusMessage.parentElement.appendChild(badge);
-        }
-
-        function switchToPopupMethod() {
-            console.log('ポップアップ方式に切り替え');
-            // iframeアプローチが失敗した場合、直接AR.htmlを開く準備
-            clearInterval(checkInterval);
-            statusMessage.textContent = 'セットアップ中...';
-            
-            // 簡単な準備完了検出: 3秒後に表示
+            // 1秒後に自動的にAR.htmlへ移動
             setTimeout(() => {
-                showButton();
-                statusMessage.innerHTML = '<span style="color: #4caf50;">✓ 準備完了！タップして開始</span>';
-            }, 3000);
+                window.location.href = 'AR.html';
+            }, 1000);
         }
 
-        // ボタンクリック時の処理
+        // UI（プログレスバーとテキスト）を更新する補助関数
+        function updateUI(percent, message) {
+            const roundedPercent = Math.floor(percent);
+            progressBar.style.width = `${percent}%`;
+            percentText.textContent = `${roundedPercent}%`;
+            statusMessage.textContent = message;
+        }
+
+        // ボタンを手動で押しても即座に遷移できるように設定
         arButton.addEventListener('click', () => {
-            // AR.htmlへ遷移
             window.location.href = 'AR.html';
         });
 
-        // ページロード時に監視開始
-        // 修正後（これに書き換える！）
-		// loadイベントを待たずに、JavaScriptが読まれた瞬間に即実行する
-        (function() {
-          // 1. 遷移後、即座にカメラの起動と監視を開始（これで許可画面がすぐ出ます）
-          watchCamera();
-
-          // 2. A-Frameのシーンが準備できたら、裏で恐竜モデルを1つずつロードする
-          const scene = document.querySelector('a-scene');
-          if (scene && scene.hasLoaded) {
-            loadModelsSequentially();
-          } else if (scene) {
-            scene.addEventListener('loaded', loadModelsSequentially);
-          }
-        })();
-
-        // クリーンアップ
-        window.addEventListener('beforeunload', () => {
-            if (checkInterval) clearInterval(checkInterval);
-            if (setupTimeout) clearTimeout(setupTimeout);
-        });
+        // ページが読み込まれたら即座に事前ダウンロードを開始
+        window.addEventListener('DOMContentLoaded', preloadModels);
     </script>
 </body>
 </html>
