@@ -84,7 +84,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* ⭕ プログレスバーのスタイルを追加 */
         .progress-container {
             width: 100%;
             background-color: #e0e0e0;
@@ -172,7 +171,7 @@
     </div>
 
     <script>
-        // 事前に読み込む4つの3Dモデルファイル（AR.htmlと同一のパス）
+        // 事前に読み込む4つの3Dモデルファイル
         const modelUrls = [
             'models/プロトケラトプス/Protoceratops.glb',
             'models/ラウジャア/Ravjaa.glb',
@@ -186,50 +185,57 @@
         const arButton = document.getElementById('ar-button');
         const spinner = document.getElementById('loading-spinner');
 
-        // 各モデルファイルを順番にFetchダウンロードして進捗を計算する関数
         async function preloadModels() {
             const totalFiles = modelUrls.length;
             let completedFiles = 0;
 
             for (let i = 0; i < totalFiles; i++) {
                 const url = modelUrls[i];
-                // パスからファイル名だけを抽出して画面表示用に加工（例: Protoceratops.glb）
                 const fileName = url.substring(url.lastIndexOf('/') + 1);
 
                 try {
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-                    // サーバーからファイルサイズ（Content-Length）を取得
+                    // サーバーからファイルサイズを取得
                     const contentLength = response.headers.get('content-length');
-                    const total = contentLength ? parseInt(contentLength, 10) : 0;
+                    
+                    // ⭕【修正ポイント】容量が取得できないサーバー環境に備え、仮のサイズ（3MB=3000000バイト）をセット
+                    const total = contentLength ? parseInt(contentLength, 10) : 3000000;
+                    const isEstimated = !contentLength; // サーバーからサイズが取れなかったかどうかのフラグ
                     
                     const reader = response.body.getReader();
                     let loaded = 0;
 
-                    // ストリーミングでバイト単位の進捗を取得
+                    // ストリーミングでリアルタイムに進捗を取得
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         loaded += value.length;
 
-                        // 現在のファイルの進捗率 (0 〜 1)
-                        const fileProgress = total > 0 ? (loaded / total) : 0;
-                        // 4つのファイル全体の合計進捗率 (0 〜 100)
+                        // 現在ダウンロード中のファイルの進捗率 (0 〜 1)
+                        let fileProgress = loaded / total;
+                        
+                        // もしサイズが推測値で、実際のデータが推測を超えそうな場合は99%で待機させる
+                        if (isEstimated && fileProgress > 0.99) {
+                            fileProgress = 0.99;
+                        }
+
+                        // 4つのファイル全体の合計進捗率を計算 (0 〜 100)
                         let overallProgress = ((completedFiles + fileProgress) / totalFiles) * 100;
                         
-                        // 完全に処理が終わるまでは最高99%で留める（なめらかさのため）
-                        updateUI(Math.min(overallProgress, 99), `データを読み込み中: ${fileName}`);
+                        // 完全にファイル処理が終わるまではそのファイル枠の最高値未満で留める
+                        updateUI(Math.min(overallProgress, ((completedFiles + 0.99) / totalFiles) * 100), `データを読み込み中: ${fileName}`);
                     }
 
-                    // 1つのファイルが完全にダウンロード完了
+                    // 1つのファイルが完全にダウンロード完了したら確実に進捗を同期（1つ目なら25%、2つ目なら50%...）
                     completedFiles++;
                     const currentProgress = (completedFiles / totalFiles) * 100;
                     updateUI(currentProgress, `データを読み込み中: ${fileName}`);
 
                 } catch (error) {
                     console.error(`ダウンロード失敗: ${url}`, error);
-                    // エラーが起きてもエラーで全体を止めず、完了扱いにして次のファイルに進む（フォールバック）
+                    // 万が一エラーが起きても全体を止めず、完了扱いにして次のファイルに進む
                     completedFiles++;
                     updateUI((completedFiles / totalFiles) * 100, `一部データの読み込みをスキップしました`);
                 }
